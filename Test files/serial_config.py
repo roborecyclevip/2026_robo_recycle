@@ -1,0 +1,2 @@
+SERIAL_PORT = "/dev/ttyACM0"
+BAUD_RATE = 115200

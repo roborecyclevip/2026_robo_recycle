@@ -1,7 +1,9 @@
+#include "SerialConfig.h"
+
 #define ENDSTOP_PIN 9
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
   pinMode(ENDSTOP_PIN, INPUT_PULLUP);  // Enable internal pull-up resistor
 }
 

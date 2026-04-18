@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+#include "SerialConfig.h"
 
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
 
@@ -42,7 +43,7 @@ void homeX() {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
   pinMode(X_ENDSTOP_PIN, INPUT_PULLUP);
 
   stepperX.setMaxSpeed(1000);

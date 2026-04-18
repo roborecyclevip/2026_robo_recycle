@@ -1,9 +1,7 @@
 import serial
 import time
 
-# === CONFIGURATION ===
-SERIAL_PORT = '/dev/ttyACM0'  # Change this to your port (e.g., COM3 on Windows, /dev/ttyUSB0 on Linux)
-BAUD_RATE = 9600
+from serial_config import BAUD_RATE, SERIAL_PORT
 
 # === CONNECT TO ARDUINO ===
 def connect():

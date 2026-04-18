@@ -1,4 +1,5 @@
 #include "HX711.h"
+#include "SerialConfig.h"
 
 // HX711.DOUT	- pin #A1
 // HX711.PD_SCK	- pin #A0
@@ -6,7 +7,7 @@
 HX711 force(A1, A0);		// parameter "gain" is ommited; the default value 128 is used by the library
 
 void setup() {
-  Serial.begin(38400);
+  Serial.begin(SERIAL_BAUD_RATE);
   Serial.println("Force Testing");
 
   Serial.println("Before setting up the scale:");

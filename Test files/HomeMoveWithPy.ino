@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+#include "SerialConfig.h"
 
 // === CONFIG ===
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
@@ -56,7 +57,7 @@ void homeZ() { homeAxis(stepperZ, Z_ENDSTOP_PIN, "Z"); }
 
 // === SETUP ===
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
 
   pinMode(X_ENDSTOP_PIN, INPUT_PULLUP);
   pinMode(Y_ENDSTOP_PIN, INPUT_PULLUP);

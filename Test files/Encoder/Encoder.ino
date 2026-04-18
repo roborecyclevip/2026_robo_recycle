@@ -8,6 +8,7 @@
 */
 // Uses Encoder by Paul Stoffregen
 #include <Encoder.h>
+#include "../SerialConfig.h"
 
 Encoder myEnc(5, 6); // Encoder pins
 
@@ -26,7 +27,7 @@ float speedRPM = 0.0;  // Speed in revolutions per minute
 int direction = 0; // +1 = forward, -1 = backward, 0 = stopped
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
   Serial.println("Encoder with speed and direction");
   oldPosition = myEnc.read();
   oldTime = millis();

@@ -1,9 +1,7 @@
 import serial
 import time
 
-# Replace with your Arduino serial port and baud rate
-SERIAL_PORT = '/dev/ttyACM0'
-BAUD_RATE = 9600
+from serial_config import BAUD_RATE, SERIAL_PORT
 
 try:
     ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
@@ -19,7 +17,7 @@ def send_command(cmd):
 
     # Read any available response
     while ser.in_waiting:
-        response = ser.readline().decode().strip()
+        response = ser.readline().decode(errors='ignore').strip()
         if response:
             print("Arduino:", response)
 
