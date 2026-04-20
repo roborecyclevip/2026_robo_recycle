@@ -3,9 +3,10 @@
 #include "STEPPERmotor.h"
 #include "Encoder.h"
 #include "Loadcell.h"
+#include "Loadcell_pi.h"
 
-#define LOADCELL_THRESHOLD 5.0        
-#define LOADCELL_ENGAGEMENT_DEADBAND 10.0  
+#define LOADCELL_THRESHOLD 5.0
+#define LOADCELL_ENGAGEMENT_DEADBAND 10.0
 
 #define SCREW_DISPOSAL_X 0
 #define SCREW_DISPOSAL_Y 0
@@ -44,6 +45,7 @@ void setup() {
   STEPPERmotor_Init();
   Encoder_Init();
   Loadcell_Init();
+  LoadcellPi_Init();
 
   Stepper_HomeAll();
   Serial.println(F("System Homed and Ready"));
@@ -105,7 +107,7 @@ bool autoUnscrew(float x, float y) {
   const float Z_STEP_UNSCREW = 0.2;
   const float Z_MAX_DROP    = 50.0;    // max Z travel
   const float ENGAGE_DRILL_DEGREES = 720;   // 2 full turns per attempt
-  const float UNSCREW_DRILL_DEGREES = 180;  
+  const float UNSCREW_DRILL_DEGREES = 180;
   const int   DRILL_SPEED  = 255;
   const float ENGAGE_LOAD  = -1300000.000;     // > this = screw engaged
   const float Z_UNSCREW_THRESHOLD = -1300000.000; // keep moving down until this threshold acheived
@@ -125,14 +127,13 @@ bool autoUnscrew(float x, float y) {
 
   // --- 2. Lower Z until engagement ---
   Serial.println(F("Lowering Z to engage screw..."));
-  while (load > ENGAGE_LOAD && (millis() - startTime) < TIMEOUT) { // may need to change this if load is positive
+  while (!LoadcellPi_IsContact() && (millis() - startTime) < TIMEOUT) { // may need to change this if load is positive
     targetZ += Z_STEP_ENGAGE;
     // if (targetZ < Z_START - Z_MAX_DROP) {
     //   Serial.println(F("Z limit reached."));
     //   return false;
     // }
     Stepper_MoveTo(x, y, targetZ);
-    load = Loadcell_Read();
     Serial.print(F("Z=")); Serial.print(targetZ, 1);
     // Serial.print(F(" Load=")); Serial.println(load, 3);
   }
@@ -149,14 +150,14 @@ bool autoUnscrew(float x, float y) {
   if (!drillOk) {
     Serial.println(F("Drill timeout."));
     return false;
-  } 
+  }
   Stepper_MoveTo(x, y, targetZ - 1);
 
   drillOk = Motor_RotateDegrees(180, DRILL_SPEED, 8000);
   if (!drillOk) {
     Serial.println(F("Drill timeout."));
     return false;
-  } 
+  }
   Stepper_MoveTo(x, y, targetZ);
 
   float initialDrillLoad = Loadcell_Read();
@@ -175,20 +176,19 @@ bool autoUnscrew(float x, float y) {
       Serial.println(F("Screw engaged"));
     }
   }
-  
+
 
   // --- 4. Unscrew loop: drill + raise Z ---
   bool unscrewed = false;
   while (!unscrewed) {
     load = Loadcell_Read();
-    while (load < Z_UNSCREW_THRESHOLD) {
+    while (LoadcellPi_ShouldLowerForUnscrew()) {
       targetZ -= Z_STEP_UNSCREW;
       Stepper_MoveTo(x, y, targetZ);
-      load = Loadcell_Read();
     }
 
     int count = 0;
-    while (load > DRILL_STOP_THRESHOLD) {
+    while (LoadcellPi_ShouldKeepDrilling()) {
       count ++;
       // Drill (rotate backward)
       bool drillOk = Motor_RotateDegrees(-UNSCREW_DRILL_DEGREES, DRILL_SPEED, 8000);
@@ -196,9 +196,11 @@ bool autoUnscrew(float x, float y) {
         Serial.println(F("Drill timeout."));
         return false;
       }
-      float prevLoad = load;
-      load = Loadcell_Read();
-      Serial.println(load);
+
+      // float prevLoad = load;
+      // load = Loadcell_Read();
+      // Serial.println(load);
+
       // if (load > prevLoad) {
       //   unscrewed = true;
       // }
