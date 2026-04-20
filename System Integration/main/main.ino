@@ -127,16 +127,24 @@ bool autoUnscrew(float x, float y) {
 
   // --- 2. Lower Z until engagement ---
   Serial.println(F("Lowering Z to engage screw..."));
-  while (!LoadcellPi_IsContact() && (millis() - startTime) < TIMEOUT) { // may need to change this if load is positive
-    targetZ += Z_STEP_ENGAGE;
-    // if (targetZ < Z_START - Z_MAX_DROP) {
-    //   Serial.println(F("Z limit reached."));
-    //   return false;
-    // }
+  while ((millis() - startTime) < TIMEOUT) {
+    int action = LoadcellPi_GetApproachAction();
+
+    if (action == LOADCELL_ACTION_STOP) {
+      break;
+    }
+
+    if (action == LOADCELL_ACTION_DOWN) {
+      targetZ += Z_STEP_ENGAGE;
+    } else if (action == LOADCELL_ACTION_UP) {
+      targetZ -= Z_STEP_ENGAGE;
+    }
+
     Stepper_MoveTo(x, y, targetZ);
-    Serial.print(F("Z=")); Serial.print(targetZ, 1);
-    // Serial.print(F(" Load=")); Serial.println(load, 3);
+    Serial.print(F("Z="));
+    Serial.println(targetZ, 1);
   }
+
 
   // if (load < ENGAGE_LOAD) {
   //   Serial.println(F("Failed to engage screw."));
