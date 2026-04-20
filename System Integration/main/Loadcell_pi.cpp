@@ -29,11 +29,43 @@ static bool askYesNo(const char* prompt) {
   }
 }
 
+static int askApproachDirection() {
+  Serial.println("Move UP or DOWN?");
+
+  String input = "";
+  while (true) {
+    while (Serial.available()) {
+      char c = (char)Serial.read();
+
+      if (c == '\n' || c == '\r') {
+        input.trim();
+        input.toUpperCase();
+
+        if (input == "UP") {
+          return LOADCELL_ACTION_UP;
+        }
+        if (input == "DOWN") {
+          return LOADCELL_ACTION_DOWN;
+        }
+
+        input = "";
+        Serial.println("Please type UP or DOWN:");
+      } else {
+        input += c;
+      }
+    }
+  }
+}
+
 void LoadcellPi_Init() {
 }
 
-bool LoadcellPi_IsContact() {
-  return askYesNo("Has the load cell reached contact threshold?");
+int LoadcellPi_GetApproachAction() {
+  if (askYesNo("Has the load cell reached contact threshold?")) {
+    return LOADCELL_ACTION_STOP;
+  }
+
+  return askApproachDirection();
 }
 
 bool LoadcellPi_ShouldLowerForUnscrew() {
