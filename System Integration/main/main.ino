@@ -2,7 +2,6 @@
 #include "DCmotor.h"
 #include "STEPPERmotor.h"
 #include "Encoder.h"
-#include "Loadcell.h"
 #include "Loadcell_pi.h"
 
 #define LOADCELL_THRESHOLD 5.0

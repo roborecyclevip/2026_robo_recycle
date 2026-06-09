@@ -4,7 +4,6 @@
 #define STEPPERMOTOR_H
 
 #include "MultiStepperLite.h"
-#include "Loadcell.h"
 
 // === CONFIG ===
 #define STEPS_PER_MM_XY 72.2543352601  // 10000 steps / 138.4 mm
@@ -43,6 +42,7 @@ void setDirection(int dirPin, bool forward) {
   digitalWrite(dirPin, forward ? HIGH : LOW);
 }
 
+// homeAxis
 void homeAxis(uint8_t motorIndex, int dirPin, int endstopPin, const char* axisName, bool reverse) {
   Serial.print("Homing ");
   Serial.println(axisName);

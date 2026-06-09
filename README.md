@@ -74,9 +74,3 @@ Known limitations:
 3. `System Integration/main/DCmotor.cpp`
 4. `System Integration/main/Encoder.cpp`
 5. `System Integration/main/Loadcell.cpp`
-
-## Important Notes For New Students
-
-- The Arduino is the machine controller in the current version. The Raspberry Pi is only a command sender.
-- The main firmware uses `115200` baud. Some old test sketches use `9600` or `38400`.
-- The repo does not include every dependency or every hardware part number, so confirm physical hardware in the lab before ordering or rewiring anything.
