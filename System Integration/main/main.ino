@@ -3,6 +3,7 @@
 #include "STEPPERmotor.h"
 #include "Encoder.h"
 #include "Loadcell_pi.h"
+#include "Loadcell.h"
 
 #define LOADCELL_THRESHOLD 5.0
 #define LOADCELL_ENGAGEMENT_DEADBAND 10.0

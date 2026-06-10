@@ -21,7 +21,7 @@ fi
 # Only uncomment below IF using load cell:
 #########################
 # Check for HX711 Library
-if ! ("$PWD"/bin/arduino-cli lib list | grep -q HX711)
+if ! ("$PWD"/bin/arduino-cli lib list | grep -q 'HX711')
 then
     "$PWD"/bin/arduino-cli lib update-index
     "$PWD"/bin/arduino-cli lib install "HX711"
