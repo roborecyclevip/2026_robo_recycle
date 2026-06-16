@@ -57,6 +57,43 @@ static int askApproachDirection() {
   }
 }
 
+static int askAlignmentDirection() {
+  Serial.println("Nudge alignment? Type FORWARD, BACKWARD, LEFT, RIGHT, or DONE:");
+
+  String input = "";
+  while (true) {
+    while (Serial.available()) {
+      char c = (char)Serial.read();
+
+      if (c == '\n' || c == '\r') {
+        input.trim();
+        input.toUpperCase();
+
+        if (input == "DONE") {
+          return ALIGNMENT_ACTION_DONE;
+        }
+        if (input == "FORWARD" || input == "F") {
+          return ALIGNMENT_ACTION_FORWARD;
+        }
+        if (input == "BACKWARD" || input == "BACK" || input == "B") {
+          return ALIGNMENT_ACTION_BACKWARD;
+        }
+        if (input == "LEFT" || input == "L") {
+          return ALIGNMENT_ACTION_LEFT;
+        }
+        if (input == "RIGHT" || input == "R") {
+          return ALIGNMENT_ACTION_RIGHT;
+        }
+
+        input = "";
+        Serial.println("Please type FORWARD, BACKWARD, LEFT, RIGHT, or DONE:");
+      } else {
+        input += c;
+      }
+    }
+  }
+}
+
 void LoadcellPi_Init() {
 }
 
@@ -68,12 +105,24 @@ int LoadcellPi_GetApproachAction() {
   return askApproachDirection();
 }
 
+int LoadcellPi_GetAlignmentAction() {
+  return askAlignmentDirection();
+}
+
 bool LoadcellPi_ShouldLowerForUnscrew() {
   return askYesNo("Should Z keep lowering for unscrew?");
 }
 
 bool LoadcellPi_ShouldKeepDrilling() {
   return askYesNo("Should the drill keep rotating?");
+}
+
+bool LoadcellPi_DidScrewDrop() {
+  return askYesNo("Did the screw drop?");
+}
+
+bool LoadcellPi_ShouldTryAnotherUnscrewPass() {
+  return askYesNo("Lower/pick and try another unscrew pass?");
 }
 
 bool LoadcellPi_Tare() {

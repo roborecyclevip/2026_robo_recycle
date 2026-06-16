@@ -15,6 +15,7 @@
 # Check if we have the arduino cli, if not, we install it
 if ! "$PWD"/bin/arduino-cli version
 then
+    rm -f "$PWD"/bin/arduino-cli # it's brocken anyway since it can't show version
     curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 fi
 
@@ -46,5 +47,4 @@ fi
 "$PWD"/bin/arduino-cli core update-index
 "$PWD"/bin/arduino-cli core install arduino:avr
 "$PWD"/bin/arduino-cli compile --fqbn arduino:avr:mega "System Integration/main"
-
 

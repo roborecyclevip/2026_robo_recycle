@@ -8,11 +8,13 @@
 #define LOADCELL_THRESHOLD 5.0
 #define LOADCELL_ENGAGEMENT_DEADBAND 10.0
 
-#define SCREW_DISPOSAL_X 0
-#define SCREW_DISPOSAL_Y 0
-#define SCREW_DISPOSAL_Z 0
+#define SAFE_Z 140.0
+#define SCREW_DROPOFF_X 225.0
+#define SCREW_DROPOFF_Y 330.0
+#define SCREW_DROPOFF_APPROACH_Y 280.0
 
 #define STEPPER_INCREMENT 0.1
+#define SCREW_ALIGNMENT_NUDGE_MM 1.0
 
 float load_cell_reading = 0.0;
 float motor_speed = 0.0;
@@ -20,20 +22,6 @@ float motor_speed = 0.0;
 float targetX = 0.0;
 float targetY = 0.0;
 float targetZ = 0.0;
-float hardCodePoints[50][2] = {
-    {233.5, 195.0},
-    {233.5, 182.5},
-    {233.5, 169.5},
-
-    {222.0, 195.0},
-    {222.0, 182.5},
-    {222.0, 169.5},
-
-    {210.5, 195.0},
-    {210.5, 182.5},
-    {210.5, 169.5}
-    // the rest of the array is automatically zero-filled
-};
 
 // Serial command buffer
 String inputString = "";
@@ -61,7 +49,9 @@ void printHelp() {
   Serial.println(F("HOME                → Home all steppers"));
   Serial.println(F("GOTO X Y Z          → Move gantry"));
   Serial.println(F("DRILL deg [spd]     → Rotate drill (spd=0-255)"));
-  Serial.println(F("UNSCREW X Y         → Auto unscrew at X,Y"));
+  Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
+  Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
+  Serial.println(F("Alignment prompts   → FORWARD/BACKWARD/LEFT/RIGHT/DONE"));
   Serial.println(F("BRAKE               → Stop drill"));
   Serial.println(F("RPM                 → Show drill speed"));
   Serial.println(F("POS                 → Show encoder position"));
@@ -96,38 +86,58 @@ void serialEvent() {
 
 
 /**
- * @brief Fully automated unscrew routine at given X,Y
+ * @brief Manual-assisted unscrew routine at given X,Y
  * @param x Target X coordinate
  * @param y Target Y coordinate
  * @return true if screw removed, false on failure/timeout
  */
-bool autoUnscrew(float x, float y) {
-  const float Z_START       = 140;   // safe high Z
+bool runScrewRemovalFlow(float x, float y) {
   const float Z_STEP_ENGAGE = 0.5;     // mm per step
-  const float Z_STEP_UNSCREW = 0.2;
-  const float Z_MAX_DROP    = 50.0;    // max Z travel
-  const float ENGAGE_DRILL_DEGREES = 720;   // 2 full turns per attempt
-  const float UNSCREW_DRILL_DEGREES = 180;
+  const float Z_STEP_UNSCREW = 0.5;
+  const float Z_MAX_TRAVEL   = 50.0;    // max Z travel from safe height
+  const float UNSCREW_DRILL_DEGREES = -180;
   const int   DRILL_SPEED  = 255;
-  const float ENGAGE_LOAD  = -1300000.000;     // > this = screw engaged
-  const float Z_UNSCREW_THRESHOLD = -1300000.000; // keep moving down until this threshold acheived
-  const float DRILL_STOP_THRESHOLD = -1300000.000;
-  const unsigned long TIMEOUT = 100000; // 15 sec max
+  const unsigned long DRILL_TIMEOUT = 8000;
 
-  unsigned long startTime = millis();
-  targetZ = Z_START;
+  targetZ = SAFE_Z;
 
-  // --- 1. Move to X,Y at safe Z ---
-  Serial.println(F("Moving to XY..."));
-  Stepper_MoveTo(x, y, Z_START);
-  delay(2000);
+  // 1. Coordinates come from Serial today. Later, CV can call this same routine.
+  Serial.println(F("Moving to screw coordinate at safe Z..."));
+  Stepper_MoveTo(x, y, SAFE_Z);
+  targetX = x;
+  targetY = y;
+  delay(500);
 
-  float load = Loadcell_Read();
-  // Serial.print(F("Initial load: ")); Serial.println(load, 3);
+  Serial.println(F("Manual alignment at safe Z."));
+  while (true) {
+    int alignmentAction = LoadcellPi_GetAlignmentAction();
 
-  // --- 2. Lower Z until engagement ---
-  Serial.println(F("Lowering Z to engage screw..."));
-  while ((millis() - startTime) < TIMEOUT) {
+    if (alignmentAction == ALIGNMENT_ACTION_DONE) {
+      break;
+    }
+
+    if (alignmentAction == ALIGNMENT_ACTION_FORWARD) {
+      y += SCREW_ALIGNMENT_NUDGE_MM;
+    } else if (alignmentAction == ALIGNMENT_ACTION_BACKWARD) {
+      y -= SCREW_ALIGNMENT_NUDGE_MM;
+    } else if (alignmentAction == ALIGNMENT_ACTION_LEFT) {
+      x -= SCREW_ALIGNMENT_NUDGE_MM;
+    } else if (alignmentAction == ALIGNMENT_ACTION_RIGHT) {
+      x += SCREW_ALIGNMENT_NUDGE_MM;
+    }
+
+    Stepper_MoveTo(x, y, SAFE_Z);
+    targetX = x;
+    targetY = y;
+    Serial.print(F("Adjusted X="));
+    Serial.print(x, 2);
+    Serial.print(F(" Y="));
+    Serial.println(y, 2);
+  }
+
+  // 2. Lower slowly until contact. The prompt is the feedback loop placeholder.
+  Serial.println(F("Lowering slowly until screw contact..."));
+  while (targetZ < SAFE_Z + Z_MAX_TRAVEL) {
     int action = LoadcellPi_GetApproachAction();
 
     if (action == LOADCELL_ACTION_STOP) {
@@ -145,95 +155,54 @@ bool autoUnscrew(float x, float y) {
     Serial.println(targetZ, 1);
   }
 
-
-  // if (load < ENGAGE_LOAD) {
-  //   Serial.println(F("Failed to engage screw."));
-  //   return false;
-  // }
+  if (targetZ >= SAFE_Z + Z_MAX_TRAVEL) {
+    Serial.println(F("Contact search exceeded Z travel limit."));
+    return false;
+  }
 
   Serial.println(F("Screw touching"));
 
-  // --- 3. Check engagement
-  bool drillOk = Motor_RotateDegrees(-ENGAGE_DRILL_DEGREES, DRILL_SPEED, 8000);
-  if (!drillOk) {
-    Serial.println(F("Drill timeout."));
-    return false;
-  }
-  Stepper_MoveTo(x, y, targetZ - 1);
-
-  drillOk = Motor_RotateDegrees(180, DRILL_SPEED, 8000);
-  if (!drillOk) {
-    Serial.println(F("Drill timeout."));
-    return false;
-  }
-  Stepper_MoveTo(x, y, targetZ);
-
-  float initialDrillLoad = Loadcell_Read();
-
-  if (initialDrillLoad < load) {
-    Serial.println(F("Screw engaged"));
-  } else {
-    // potentially put while loop in here that does steps to engage if it misses, ie try again but rotate drill 20 degrees
-    float secondaryDrillLoad = Loadcell_Read();
-    bool drillOk = Motor_RotateDegrees(-ENGAGE_DRILL_DEGREES, DRILL_SPEED, 8000);
+  // 3. Unscrew in small manual-confirmed passes. Later sensor checks can replace prompts.
+  while (true) {
+    Serial.println(F("Unscrewing a little..."));
+    bool drillOk = Motor_RotateDegrees(UNSCREW_DRILL_DEGREES, DRILL_SPEED, DRILL_TIMEOUT);
     if (!drillOk) {
       Serial.println(F("Drill timeout."));
       return false;
     }
-    if (secondaryDrillLoad > initialDrillLoad) {
-      Serial.println(F("Screw engaged"));
-    }
-  }
 
-
-  // --- 4. Unscrew loop: drill + raise Z ---
-  bool unscrewed = false;
-  while (!unscrewed) {
-    load = Loadcell_Read();
-    while (LoadcellPi_ShouldLowerForUnscrew()) {
-      targetZ -= Z_STEP_UNSCREW;
-      Stepper_MoveTo(x, y, targetZ);
+    if (LoadcellPi_DidScrewDrop()) {
+      Serial.println(F("Screw drop confirmed."));
+      break;
     }
 
-    int count = 0;
-    while (LoadcellPi_ShouldKeepDrilling()) {
-      count ++;
-      // Drill (rotate backward)
-      bool drillOk = Motor_RotateDegrees(-UNSCREW_DRILL_DEGREES, DRILL_SPEED, 8000);
-      if (!drillOk) {
-        Serial.println(F("Drill timeout."));
-        return false;
-      }
+    if (!LoadcellPi_ShouldTryAnotherUnscrewPass()) {
+      Serial.println(F("Operator stopped unscrew sequence."));
+      return false;
+    }
 
-      // float prevLoad = load;
-      // load = Loadcell_Read();
-      // Serial.println(load);
-
-      // if (load > prevLoad) {
-      //   unscrewed = true;
-      // }
-      if (count > 15) {
-        unscrewed = true;
+    Serial.println(F("Lowering/picking before next pass..."));
+    while (targetZ < SAFE_Z + Z_MAX_TRAVEL) {
+      if (!LoadcellPi_ShouldLowerForUnscrew()) {
         break;
       }
+      targetZ += Z_STEP_UNSCREW;
+      Stepper_MoveTo(x, y, targetZ);
+      Serial.print(F("Z="));
+      Serial.println(targetZ, 1);
     }
   }
 
-  Stepper_MoveTo(x, y, targetZ - 30);
-  targetZ -= 30;
+  // 4. Retract and move to magnet/drop-off location.
+  targetZ = SAFE_Z;
+  Stepper_MoveTo(x, y, SAFE_Z);
   Motor_Brake();
-  delay(1000);
-  Stepper_MoveTo(225, 280, targetZ);
-  delay(1000);
-  Stepper_MoveTo(225, 280, targetZ + 40);
-  delay(1000);
+  Serial.println(F("Moving to screw drop-off location..."));
+  Stepper_MoveTo(SCREW_DROPOFF_X, SCREW_DROPOFF_APPROACH_Y, SAFE_Z);
+  Stepper_MoveTo(SCREW_DROPOFF_X, SCREW_DROPOFF_Y, SAFE_Z);
+  targetX = SCREW_DROPOFF_X;
+  targetY = SCREW_DROPOFF_Y;
 
-  Stepper_MoveTo(225, 330, targetZ + 40);
-  delay(1000);
-  Stepper_MoveTo(225, 330, targetZ);
-  delay(1000);
-
-  delay(1000);
   return true;
 }
 
@@ -361,7 +330,7 @@ void processCommand(String cmd) {
   }
 
   /* --------------------------------------------------- */
-  /*  UNSCREW X Y  –  Auto unscrew routine               */
+  /*  UNSCREW X Y  - Manual-assisted unscrew routine     */
   /* --------------------------------------------------- */
   if (cmd.startsWith("UNSCREW ")) {
     String args = cmd.substring(8);
@@ -385,7 +354,7 @@ void processCommand(String cmd) {
         Serial.print(F(" Y="));
         Serial.println(y, 2);
 
-        bool success = autoUnscrew(x, y);
+        bool success = runScrewRemovalFlow(x, y);
         Serial.println(success ? F("UNSCREW complete.") : F("UNSCREW failed."));
     } else {
         Serial.println(F("Error: UNSCREW X Y"));
@@ -468,12 +437,9 @@ void processCommand(String cmd) {
     Serial.println(F("Starting UNSCREWCHAIN sequence..."));
     int successCount = 0;
 
-    for (int i = 0; i < 9; i++) {
-      float x = hardCodePoints[i][0];
-      float y = hardCodePoints[i][1];
-
-      // float x = points[i][0];
-      // float y = points[i][1];
+    for (int i = 0; i < idx; i++) {
+      float x = points[i][0];
+      float y = points[i][1];
 
       Serial.print(F("--- Screw "));
       Serial.print(i + 1);
@@ -484,7 +450,7 @@ void processCommand(String cmd) {
       Serial.print(F(" Y="));
       Serial.println(y, 2);
 
-      bool success = autoUnscrew(x, y);
+      bool success = runScrewRemovalFlow(x, y);
 
       if (success) {
         successCount++;
@@ -512,5 +478,3 @@ void processCommand(String cmd) {
   /* --------------------------------------------------- */
   Serial.println(F("Unknown command. Type HELP."));
 }
-
-

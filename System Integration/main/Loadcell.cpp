@@ -1,9 +1,11 @@
 #include "Loadcell.h"
 
 // HX711 instance
-HX711 loadcell(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+HX711 loadcell;
 
 void Loadcell_Init() {
+  loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+
   // // Wait for the chip to be ready
   // while (!scale.is_ready()) {
   //   Serial.println("Waiting for load cell to be ready...");
