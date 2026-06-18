@@ -1,10 +1,30 @@
 #include "Loadcell.h"
 
+template <typename T>
+auto makeLoadcell(int) -> decltype(T(), (HX711*)0) {
+  static T instance;
+  return &instance;
+}
+
+template <typename T>
+T* makeLoadcell(...) {
+  static T instance(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  return &instance;
+}
+
+template <typename T>
+auto initLoadcell(T& instance, int) -> decltype(instance.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN), void()) {
+  instance.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+}
+
+template <typename T>
+void initLoadcell(T&, ...) {}
+
 // HX711 instance
-HX711 loadcell;
+HX711& loadcell = *makeLoadcell<HX711>(0);
 
 void Loadcell_Init() {
-  loadcell.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  initLoadcell(loadcell, 0);
 
   // // Wait for the chip to be ready
   // while (!scale.is_ready()) {

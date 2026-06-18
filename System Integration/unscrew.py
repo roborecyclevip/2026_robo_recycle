@@ -1,4 +1,18 @@
 #!/bin/python3
+# 
+# Unscrew routine for Raspeberry Pi for VIP Project RoboRecycle
+# unscrew.py
+# 
+# This is a python script that run the unscrew routine for the VIP Project RoboRecycle
+# TODO: Write down the steps this routine follows
+#
+#
+# Written by Shayyan Ali (z5482111) on 09/06/2026 18:55
+# Last editted: 09/06/2026 20:00
+#
+# Usage: ./unscrew.py
+# If you don't want errors for vscode code, install this extension:
+# vscode-arduino.vscode-arduino-community
 
 import serial
 import time
