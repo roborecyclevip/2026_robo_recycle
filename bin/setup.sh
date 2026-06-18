@@ -12,20 +12,26 @@
 # If you don't want errors for vscode code, install this extension:
 # vscode-arduino.vscode-arduino-community
 
+CLI_VERSION="1.5.1"
+AVR_CORE_VERSION="1.8.8"
+HX711_LIB_VERSION="0.7.5"
+MULTISTEPPERLITE_VERSION="1.2.0"
+
 # Check if we have the arduino cli, if not, we install it
 if ! "$PWD"/bin/arduino-cli version
 then
     rm -f "$PWD"/bin/arduino-cli # it's brocken anyway since it can't show version
-    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/v"$CLI_VERSION"/install.sh | BINDIR="$PWD/bin" sh
 fi
 
 # Only uncomment below IF using load cell:
 #########################
 # Check for HX711 Library
-if ! ("$PWD"/bin/arduino-cli lib list | grep -q 'HX711')
+if ! ("$PWD"/bin/arduino-cli lib list | grep -q '^HX711 Arduino Library ')
 then
     "$PWD"/bin/arduino-cli lib update-index
-    "$PWD"/bin/arduino-cli lib install "HX711"
+    "$PWD"/bin/arduino-cli lib uninstall "HX711" || true
+    "$PWD"/bin/arduino-cli lib install "HX711 Arduino Library@$HX711_LIB_VERSION"
 fi
 #########################
 
@@ -40,11 +46,10 @@ fi
 if ! "$PWD"/bin/arduino-cli lib list | grep -q '^MultiStepperLite '
 then
     "$PWD"/bin/arduino-cli lib update-index
-    "$PWD"/bin/arduino-cli lib install "MultiStepperLite"
+    "$PWD"/bin/arduino-cli lib install "MultiStepperLite@$MULTISTEPPERLITE_VERSION"
 fi
 
 # This actually runs it
 "$PWD"/bin/arduino-cli core update-index
-"$PWD"/bin/arduino-cli core install arduino:avr
-"$PWD"/bin/arduino-cli compile --fqbn arduino:avr:mega "System Integration/main"
-
+"$PWD"/bin/arduino-cli core install "arduino:avr@$AVR_CORE_VERSION"
+"$PWD"/bin/arduino-cli compile --build-path /tmp/robo_recycle_build --fqbn arduino:avr:mega "System Integration/main"
