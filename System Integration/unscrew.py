@@ -14,6 +14,8 @@
 # If you don't want errors for vscode code, install this extension:
 # vscode-arduino.vscode-arduino-community
 
+# Z=88 means contact
+
 import serial
 import time
 

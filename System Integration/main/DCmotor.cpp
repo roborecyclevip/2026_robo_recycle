@@ -1,5 +1,6 @@
 #include "DCmotor.h"
 #include "Encoder.h"
+#include "Current.h"
 
 extern const int CPR;
 
@@ -98,6 +99,13 @@ bool Motor_RotateDegrees(float degrees, int speed, unsigned long timeoutMs)
         Encoder_Update();
 
         long pos = abs(Encoder_GetPosition());          // current pulse count
+        
+        
+        // Just for lols
+        double current_sensor = read_current_sensor();
+        Serial.print(F("\ncurrent sensor: "));
+        Serial.println(current_sensor, 3);
+        
         // ----- reached target? -----
         if (pos >= absTarget) {
           break;

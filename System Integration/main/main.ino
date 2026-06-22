@@ -4,11 +4,12 @@
 #include "Encoder.h"
 #include "Loadcell_pi.h"
 #include "Loadcell.h"
+#include "Current.h"
 
 #define LOADCELL_THRESHOLD 5.0
 #define LOADCELL_ENGAGEMENT_DEADBAND 10.0
 
-#define SAFE_Z 140.0
+#define SAFE_Z 80.0
 #define SCREW_DROPOFF_X 225.0
 #define SCREW_DROPOFF_Y 330.0
 #define SCREW_DROPOFF_APPROACH_Y 280.0
@@ -56,6 +57,7 @@ void printHelp() {
   Serial.println(F("RPM                 → Show drill speed"));
   Serial.println(F("POS                 → Show encoder position"));
   Serial.println(F("LOAD                → Read load cell"));
+  Serial.println(F("READCURRENT         → Read current sensor"));
   Serial.println(F("HELP                → This menu"));
   Serial.println(F("==========================\n"));
 }
@@ -94,7 +96,7 @@ void serialEvent() {
 bool runScrewRemovalFlow(float x, float y) {
   const float Z_STEP_ENGAGE = 0.5;     // mm per step
   const float Z_STEP_UNSCREW = 0.5;
-  const float Z_MAX_TRAVEL   = 50.0;    // max Z travel from safe height
+  const float Z_MAX_TRAVEL   = 8.5;    // max Z travel from safe height
   const float UNSCREW_DRILL_DEGREES = -180;
   const int   DRILL_SPEED  = 255;
   const unsigned long DRILL_TIMEOUT = 8000;
@@ -299,7 +301,7 @@ void processCommand(String cmd) {
 }
 
   /* --------------------------------------------------- */
-  /*  BRAKE / RPM / POS / LOAD                          */
+  /*  BRAKE / RPM / POS / LOAD / READCURRENT             */
   /* --------------------------------------------------- */
   if (cmd == "BRAKE") {
     Motor_Brake();
@@ -326,6 +328,12 @@ void processCommand(String cmd) {
     float load = Loadcell_Read();
     Serial.print(F("Load cell: "));
     Serial.println(load, 3);
+    return;
+  }
+  if (cmd == "READCURRENT") {
+    double current_sensor = read_current_sensor();
+    Serial.print(F("current sensor: "));
+    Serial.println(current_sensor, 3);
     return;
   }
 

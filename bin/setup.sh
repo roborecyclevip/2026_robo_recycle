@@ -16,6 +16,10 @@ CLI_VERSION="1.5.1"
 AVR_CORE_VERSION="1.8.8"
 HX711_LIB_VERSION="0.7.5"
 MULTISTEPPERLITE_VERSION="1.2.0"
+FQBN="arduino:avr:mega"
+SKETCH_PATH="System Integration/main"
+BUILD_PATH="/tmp/robo_recycle_build"
+ARDUINO_PORT="${ARDUINO_PORT:-/dev/ttyACM0}"
 
 # Check if we have the arduino cli, if not, we install it
 if ! "$PWD"/bin/arduino-cli version
@@ -52,4 +56,5 @@ fi
 # This actually runs it
 "$PWD"/bin/arduino-cli core update-index
 "$PWD"/bin/arduino-cli core install "arduino:avr@$AVR_CORE_VERSION"
-"$PWD"/bin/arduino-cli compile --build-path /tmp/robo_recycle_build --fqbn arduino:avr:mega "System Integration/main"
+"$PWD"/bin/arduino-cli compile --build-path "$BUILD_PATH" --fqbn "$FQBN" "$SKETCH_PATH"
+"$PWD"/bin/arduino-cli upload --input-dir "$BUILD_PATH" --fqbn "$FQBN" --port "$ARDUINO_PORT"
