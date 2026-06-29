@@ -31,6 +31,7 @@
 #define STEP_INTERVAL_XY 10    // 100,000 steps/s = 10 µs/step
 #define STEP_INTERVAL_Z 33     // 30,000 steps/s ≈ 33 µs/step
 #define HOMING_STEP_INTERVAL 5000  // 200 steps/s = 5,000 µs/step
+#define HOMING_TIMEOUT_MS 8000
 
 // Global stepper instance and position variables
 MultiStepperLite steppers(3); // Initialize with 3 motors (X, Y, Z)
@@ -47,6 +48,11 @@ void homeAxis(uint8_t motorIndex, int dirPin, int endstopPin, const char* axisNa
   Serial.print("Homing ");
   Serial.println(axisName);
 
+  int initialState = digitalRead(endstopPin);
+  Serial.print(axisName);
+  Serial.print(" endstop initial state: ");
+  Serial.println(initialState == HIGH ? "HIGH" : "LOW");
+
   if (digitalRead(endstopPin) == LOW) {
     return;
   }
@@ -55,8 +61,21 @@ void homeAxis(uint8_t motorIndex, int dirPin, int endstopPin, const char* axisNa
   setDirection(dirPin, reverse ? true : false); // Z homes in positive direction, X/Y negative
   steppers.start_continuous(motorIndex, 200);
 
+  unsigned long startMs = millis();
   while (digitalRead(endstopPin) != LOW) {
     steppers.do_tasks();
+
+    if (millis() - startMs > HOMING_TIMEOUT_MS) {
+      steppers.stop(motorIndex);
+      while (!steppers.is_finished(motorIndex)) {
+        steppers.do_tasks();
+      }
+
+      Serial.print("ERROR: ");
+      Serial.print(axisName);
+      Serial.println(" homing timeout. Check endstop state/direction.");
+      return;
+    }
   }
 
   steppers.stop(motorIndex);

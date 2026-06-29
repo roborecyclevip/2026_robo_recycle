@@ -24,6 +24,54 @@ float targetX = 0.0;
 float targetY = 0.0;
 float targetZ = 0.0;
 
+void logDrillTelemetry(unsigned long durationMs, int speed, unsigned long samplePeriodMs) {
+  if (speed < -255) speed = -255;
+  if (speed > 255) speed = 255;
+  if (samplePeriodMs < 20) samplePeriodMs = 20;
+
+  Encoder_Reset();
+
+  if (speed > 0) {
+    Motor_Forward(speed);
+  } else if (speed < 0) {
+    Motor_Backward(-speed);
+  } else {
+    Serial.println(F("LOGDRILL requires a non-zero speed."));
+    return;
+  }
+
+  unsigned long start = millis();
+  unsigned long nextSample = start;
+
+  Serial.println(F("time_ms,rpm,current_A,encoder_count"));
+
+  while (millis() - start < durationMs) {
+    Encoder_Update();
+
+    unsigned long now = millis();
+    if (now >= nextSample) {
+      float rpm = Encoder_GetSpeedRPM();
+      double current = read_current_sensor();
+      long position = Encoder_GetPosition();
+
+      Serial.print(now - start);
+      Serial.print(',');
+      Serial.print(rpm, 2);
+      Serial.print(',');
+      Serial.print(current, 3);
+      Serial.print(',');
+      Serial.println(position);
+
+      nextSample += samplePeriodMs;
+    }
+
+    delay(1);
+  }
+
+  Motor_Brake();
+  Serial.println(F("LOGDRILL complete."));
+}
+
 // Serial command buffer
 String inputString = "";
 bool stringComplete = false;
@@ -53,6 +101,7 @@ void printHelp() {
   Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
   Serial.println(F("Alignment prompts   → FORWARD/BACKWARD/LEFT/RIGHT/DONE"));
+  Serial.println(F("LOGDRILL ms spd [dt]→ Log RPM/current while drill spins"));
   Serial.println(F("BRAKE               → Stop drill"));
   Serial.println(F("RPM                 → Show drill speed"));
   Serial.println(F("POS                 → Show encoder position"));
@@ -299,6 +348,53 @@ void processCommand(String cmd) {
     Serial.println(ok ? F("Done.") : F("TIMEOUT!"));
     return;
 }
+
+  /* --------------------------------------------------- */
+  /*  LOGDRILL duration_ms speed [sample_ms]             */
+  /* --------------------------------------------------- */
+  if (cmd.startsWith("LOGDRILL ")) {
+    String args = cmd.substring(9);
+    args.trim();
+
+    int firstSpace = args.indexOf(' ');
+    if (firstSpace < 0) {
+      Serial.println(F("Error: LOGDRILL duration_ms speed [sample_ms]"));
+      return;
+    }
+
+    int secondSpace = args.indexOf(' ', firstSpace + 1);
+
+    unsigned long durationMs = args.substring(0, firstSpace).toInt();
+    int speed = 0;
+    unsigned long samplePeriodMs = 50;
+
+    if (secondSpace >= 0) {
+      speed = args.substring(firstSpace + 1, secondSpace).toInt();
+      samplePeriodMs = args.substring(secondSpace + 1).toInt();
+    } else {
+      speed = args.substring(firstSpace + 1).toInt();
+    }
+
+    if (durationMs == 0) {
+      Serial.println(F("Duration must be greater than 0 ms."));
+      return;
+    }
+
+    if (samplePeriodMs == 0) {
+      samplePeriodMs = 50;
+    }
+
+    Serial.print(F("Logging drill telemetry for "));
+    Serial.print(durationMs);
+    Serial.print(F(" ms at speed "));
+    Serial.print(speed);
+    Serial.print(F(" with sample period "));
+    Serial.print(samplePeriodMs);
+    Serial.println(F(" ms"));
+
+    logDrillTelemetry(durationMs, speed, samplePeriodMs);
+    return;
+  }
 
   /* --------------------------------------------------- */
   /*  BRAKE / RPM / POS / LOAD / READCURRENT             */

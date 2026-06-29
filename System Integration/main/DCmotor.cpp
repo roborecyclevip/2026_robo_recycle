@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "DCmotor.h"
 #include "Encoder.h"
 #include "Current.h"
