@@ -11,28 +11,30 @@ import serial
 from serial_config import BAUD_RATE, SERIAL_PORT
 
 
-BLOCKS = 5
-RUNS_PER_BLOCK = 15
-PAUSE_BETWEEN_BLOCKS_S = 15
+CYCLES = 6
+PAUSE_BETWEEN_CYCLES_S = 3
 TIMEOUT = 1
 RESET_DELAY_S = 2
 RUN_TIMEOUT_S = 30
-COMMAND = "DRILL -10000 50"
+COMMANDS = [
+    ("reverse", "DRILL -100000 -50"),
+    ("forward", "DRILL 100000 50"),
+]
 OUTPUT_CSV = "with_harddrive.csv"
 CURRENT_RE = re.compile(r"current sensor:\s*([-+]?\d*\.?\d+)", re.IGNORECASE)
 
 
-def collect_run_currents(ser, run_number, total_runs):
+def collect_run_currents(ser, cycle_number, phase_name, command):
     currents = []
     deadline = time.monotonic() + RUN_TIMEOUT_S
 
-    ser.write(f"{COMMAND}\n".encode())
-    print(f"Run {run_number}/{total_runs}: sent {COMMAND}")
+    ser.write(f"{command}\n".encode())
+    print(f"Cycle {cycle_number}/{CYCLES} {phase_name}: sent {command}")
 
     while True:
         if time.monotonic() > deadline:
             raise TimeoutError(
-                f"Run {run_number} did not finish within {RUN_TIMEOUT_S} seconds."
+                f"Cycle {cycle_number} {phase_name} did not finish within {RUN_TIMEOUT_S} seconds."
             )
 
         line = ser.readline().decode(errors="replace").strip()
@@ -55,11 +57,11 @@ def write_csv(rows, output_path):
     with open(output_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["with harddrive"])
-        writer.writerow(["block", "run", "sample", "current_A"])
+        writer.writerow(["cycle", "phase", "sample", "current_A"])
 
         for row in rows:
             writer.writerow(
-                [row["block"], row["run"], row["sample"], f'{row["current_A"]:.3f}']
+                [row["cycle"], row["phase"], row["sample"], f'{row["current_A"]:.3f}']
             )
 
         writer.writerow([])
@@ -71,41 +73,37 @@ def write_csv(rows, output_path):
 
 def main():
     rows = []
-    total_runs = BLOCKS * RUNS_PER_BLOCK
     output_path = Path(__file__).resolve().parent / OUTPUT_CSV
 
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=TIMEOUT) as ser:
         time.sleep(RESET_DELAY_S)
         ser.reset_input_buffer()
 
-        run_number = 1
-        for block_number in range(1, BLOCKS + 1):
-            print(f"Starting block {block_number}/{BLOCKS}")
+        for cycle_number in range(1, CYCLES + 1):
+            print(f"Starting cycle {cycle_number}/{CYCLES}")
 
-            for _ in range(RUNS_PER_BLOCK):
-                currents = collect_run_currents(ser, run_number, total_runs)
+            for phase_name, command in COMMANDS:
+                currents = collect_run_currents(ser, cycle_number, phase_name, command)
                 if not currents:
                     raise RuntimeError(
-                        f"No current readings captured for run {run_number}."
+                        f"No current readings captured for cycle {cycle_number} {phase_name}."
                     )
 
                 for sample_index, current in enumerate(currents, start=1):
                     rows.append(
                         {
-                            "block": block_number,
-                            "run": run_number,
+                            "cycle": cycle_number,
+                            "phase": phase_name,
                             "sample": sample_index,
                             "current_A": current,
                         }
                     )
 
-                run_number += 1
-
-            if block_number < BLOCKS:
+            if cycle_number < CYCLES:
                 print(
-                    f"Pausing for {PAUSE_BETWEEN_BLOCKS_S} seconds before next block..."
+                    f"Pausing for {PAUSE_BETWEEN_CYCLES_S} seconds before next cycle..."
                 )
-                time.sleep(PAUSE_BETWEEN_BLOCKS_S)
+                time.sleep(PAUSE_BETWEEN_CYCLES_S)
 
     write_csv(rows, output_path)
     print(f"Saved {len(rows)} current samples to {output_path}")
