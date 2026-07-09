@@ -14,7 +14,8 @@ MIN_Y_MM = 0
 MAX_Y_MM = 250
 STEP_MM = 5
 RAISED_Z_MM = 50
-DRILL_Z_MM = 110
+DRILL_Z_MM = 105
+MARK_DWELL_S = 0.5
 HOME_POSITION = (0, 0, 0)
 
 
@@ -29,6 +30,20 @@ def send_goto(ser, x, y, z):
             print("Arduino:", line)
 
         if "Move complete." in line:
+            return
+
+
+def send_home(ser):
+    cmd = "HOME\n"
+    ser.write(cmd.encode())
+    print("Sent:", cmd.strip())
+
+    while True:
+        line = ser.readline().decode(errors="replace").strip()
+        if line:
+            print("Arduino:", line)
+
+        if line == "Homed.":
             return
 
 
@@ -60,6 +75,7 @@ def run_grid_test(ser):
         print(f"Point {index}/{total_points}: X={x}, Y={y}")
         send_goto(ser, x, y, RAISED_Z_MM)
         send_goto(ser, x, y, DRILL_Z_MM)
+        time.sleep(MARK_DWELL_S)
         send_goto(ser, x, y, RAISED_Z_MM)
 
     send_goto(ser, *HOME_POSITION)
@@ -68,6 +84,8 @@ def run_grid_test(ser):
 def main():
     ser = serial.Serial(PORT, BAUDRATE, timeout=TIMEOUT)
     time.sleep(RESET_DELAY_S)
+
+    send_home(ser)
 
     run_grid_test(ser)
 
