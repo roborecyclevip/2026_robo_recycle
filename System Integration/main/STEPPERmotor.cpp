@@ -182,4 +182,58 @@ void Stepper_MoveTo(float x_mm, float y_mm, float z_mm) {
   currentZ = z_mm;
 }
 
+bool Stepper_Pulse(char axis, int direction) {
+  if (direction == 0) {
+    return false;
+  }
+
+  const int logicalDirection = direction > 0 ? 1 : -1;
+  uint8_t motorIndex;
+  int dirPin;
+  float *currentPosition;
+  float stepsPerMm;
+  bool directionPinHigh;
+
+  switch (axis) {
+    case 'X':
+      motorIndex = X_MOTOR_INDEX;
+      dirPin = X_DIR_PIN;
+      currentPosition = &currentX;
+      stepsPerMm = STEPS_PER_MM_XY;
+      directionPinHigh = logicalDirection > 0;
+      break;
+    case 'Y':
+      motorIndex = Y_MOTOR_INDEX;
+      dirPin = Y_DIR_PIN;
+      currentPosition = &currentY;
+      stepsPerMm = STEPS_PER_MM_XY;
+      directionPinHigh = logicalDirection > 0;
+      break;
+    case 'Z':
+      motorIndex = Z_MOTOR_INDEX;
+      dirPin = Z_DIR_PIN;
+      currentPosition = &currentZ;
+      stepsPerMm = STEPS_PER_MM_Z;
+      directionPinHigh = logicalDirection < 0;
+      break;
+    default:
+      return false;
+  }
+
+  setDirection(dirPin, directionPinHigh);
+  steppers.start_finite(motorIndex, 200, 1);
+  while (!steppers.is_finished(motorIndex)) {
+    steppers.do_tasks();
+  }
+
+  *currentPosition += logicalDirection / stepsPerMm;
+  return true;
+}
+
+void Stepper_GetPosition(float &x_mm, float &y_mm, float &z_mm) {
+  x_mm = currentX;
+  y_mm = currentY;
+  z_mm = currentZ;
+}
+
 #endif

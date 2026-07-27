@@ -37,4 +37,17 @@ void Stepper_HomeAll();
  */
 void Stepper_MoveTo(float x_mm, float y_mm, float z_mm);
 
+/**
+ * @brief Send exactly one step pulse to an axis.
+ * @param axis Axis name: 'X', 'Y', or 'Z'.
+ * @param direction Logical coordinate direction: +1 or -1.
+ * @return true when the pulse was sent, false for invalid arguments.
+ */
+bool Stepper_Pulse(char axis, int direction);
+
+/**
+ * @brief Return the controller's current logical gantry position.
+ */
+void Stepper_GetPosition(float &x_mm, float &y_mm, float &z_mm);
+
 #endif

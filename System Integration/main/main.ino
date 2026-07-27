@@ -97,6 +97,7 @@ void printHelp() {
   Serial.println(F("\n=== R2 ROBOT COMMANDS ==="));
   Serial.println(F("HOME                → Home all steppers"));
   Serial.println(F("GOTO X Y Z          → Move gantry"));
+  Serial.println(F("PULSE axis [dir]    → Send one step pulse (dir=+ or -)"));
   Serial.println(F("DRILL deg [spd]     → Rotate drill (spd=0-255)"));
   Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
@@ -310,6 +311,52 @@ void processCommand(String cmd) {
     } else {
       Serial.println(F("Error: GOTO X Y Z  (use spaces, no commas)"));
     }
+    return;
+  }
+
+  /* --------------------------------------------------- */
+  /*  PULSE axis [direction]                             */
+  /* --------------------------------------------------- */
+  if (cmd.startsWith("PULSE ")) {
+    String args = cmd.substring(6);
+    args.trim();
+
+    if (args.length() == 0) {
+      Serial.println(F("Error: PULSE axis [dir]  (axis=X/Y/Z, dir=+ or -)"));
+      return;
+    }
+
+    char axis = args.charAt(0);
+    int direction = 1;
+
+    String directionArg = args.substring(1);
+    directionArg.trim();
+    if (directionArg.length() > 0) {
+      if (directionArg == "-" || directionArg == "-1") {
+        direction = -1;
+      } else if (directionArg == "+" || directionArg == "+1") {
+        direction = 1;
+      } else {
+        Serial.println(F("Error: PULSE direction must be + or -"));
+        return;
+      }
+    }
+
+    if (!Stepper_Pulse(axis, direction)) {
+      Serial.println(F("Error: PULSE axis must be X, Y, or Z"));
+      return;
+    }
+
+    Stepper_GetPosition(targetX, targetY, targetZ);
+    Serial.print(F("Pulse complete: "));
+    Serial.print(axis);
+    Serial.print(direction > 0 ? F("+") : F("-"));
+    Serial.print(F("  Position X="));
+    Serial.print(targetX, 5);
+    Serial.print(F(" Y="));
+    Serial.print(targetY, 5);
+    Serial.print(F(" Z="));
+    Serial.println(targetZ, 5);
     return;
   }
 
