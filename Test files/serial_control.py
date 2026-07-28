@@ -1,6 +1,9 @@
 #!/bin/python3
 import serial
 import time
+import readline # This should help with the whole shell read
+# See here: https://stackoverflow.com/questions/1706945/how-to-get-interactive-input-from-user-and-to-be-able-to-use-arrowkeys-while-ent
+# Module entry incase stackoverflow dies: https://docs.python.org/3/library/readline.html#module-readline
 
 from serial_config import BAUD_RATE, SERIAL_PORT
 
