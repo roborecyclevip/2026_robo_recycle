@@ -84,8 +84,14 @@ void setup() {
   Loadcell_Init();
   LoadcellPi_Init();
 
-  Stepper_HomeAll();
-  Serial.println(F("System Homed and Ready"));
+  // Check the three end stops before allowing any automatic startup motion.
+  // If one is already pressed (LOW), stay still and report the problem.
+  if (Stepper_EndstopsReady()) {
+    Stepper_HomeAll();
+    Serial.println(F("System Homed and Ready"));
+  } else {
+    Serial.println(F("STARTUP BLOCKED: Release/check all end stops, then reset."));
+  }
   Serial.println(F("R2 Robot Starting..."));
   Serial.println(F("Type HELP for commands"));
 
@@ -97,7 +103,7 @@ void printHelp() {
   Serial.println(F("\n=== R2 ROBOT COMMANDS ==="));
   Serial.println(F("HOME                → Home all steppers"));
   Serial.println(F("GOTO X Y Z          → Move gantry"));
-  Serial.println(F("PULSE axis [dir]    → Send one step pulse (dir=+ or -)"));
+  Serial.println(F("PULSE axis dir count→ Send step pulses (example: PULSE X + 10)"));
   Serial.println(F("DRILL deg [spd]     → Rotate drill (spd=0-255)"));
   Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
@@ -315,40 +321,77 @@ void processCommand(String cmd) {
   }
 
   /* --------------------------------------------------- */
-  /*  PULSE axis [direction]                             */
+  /*  PULSE axis direction stepCount                     */
+  /*  Example: PULSE X + 10                              */
   /* --------------------------------------------------- */
   if (cmd.startsWith("PULSE ")) {
     String args = cmd.substring(6);
     args.trim();
 
-    if (args.length() == 0) {
-      Serial.println(F("Error: PULSE axis [dir]  (axis=X/Y/Z, dir=+ or -)"));
+    // Treat repeated spaces as one so commands typed by hand still parse.
+    while (args.indexOf("  ") >= 0) {
+      args.replace("  ", " ");
+    }
+
+    const int firstSpace = args.indexOf(' ');
+    const int secondSpace = args.indexOf(' ', firstSpace + 1);
+    if (firstSpace != 1 || secondSpace < 0) {
+      Serial.println(F("Error: PULSE axis dir count (example: PULSE X + 10)"));
       return;
     }
 
     char axis = args.charAt(0);
-    int direction = 1;
+    if (axis >= 'a' && axis <= 'z') {
+      axis -= ('a' - 'A');  // Allow lower-case x, y, or z.
+    }
 
-    String directionArg = args.substring(1);
+    String directionArg = args.substring(firstSpace + 1, secondSpace);
     directionArg.trim();
-    if (directionArg.length() > 0) {
-      if (directionArg == "-" || directionArg == "-1") {
-        direction = -1;
-      } else if (directionArg == "+" || directionArg == "+1") {
-        direction = 1;
-      } else {
-        Serial.println(F("Error: PULSE direction must be + or -"));
+    int direction;
+    if (directionArg == "-") {
+      direction = -1;
+    } else if (directionArg == "+") {
+      direction = 1;
+    } else {
+      Serial.println(F("Error: PULSE direction must be + or -"));
+      return;
+    }
+
+    String pulseCountArg = args.substring(secondSpace + 1);
+    pulseCountArg.trim();
+
+    // String.toInt() returns 0 for invalid input, so explicitly require digits.
+    if (pulseCountArg.length() == 0) {
+      Serial.println(F("Error: PULSE count must be a positive whole number"));
+      return;
+    }
+    for (unsigned int i = 0; i < pulseCountArg.length(); i++) {
+      if (!isDigit(pulseCountArg.charAt(i))) {
+        Serial.println(F("Error: PULSE count must be a positive whole number"));
         return;
       }
     }
 
-    if (!Stepper_Pulse(axis, direction)) {
+    const long pulseCount = pulseCountArg.toInt();
+    if (pulseCount < 1 || pulseCount > 10000) {
+      Serial.println(F("Error: PULSE count must be between 1 and 10000"));
+      return;
+    }
+
+    if (axis != 'X' && axis != 'Y' && axis != 'Z') {
       Serial.println(F("Error: PULSE axis must be X, Y, or Z"));
       return;
     }
 
+    // Stepper_Pulse sends one physical step, so repeat it count times.
+    for (long i = 0; i < pulseCount; i++) {
+      Stepper_Pulse(axis, direction);
+    }
+
     Stepper_GetPosition(targetX, targetY, targetZ);
     Serial.print(F("Pulse complete: "));
+    Serial.print(pulseCount);
+    Serial.print(F(" step(s) on "));
     Serial.print(axis);
     Serial.print(direction > 0 ? F("+") : F("-"));
     Serial.print(F("  Position X="));

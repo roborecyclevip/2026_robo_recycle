@@ -127,6 +127,26 @@ void STEPPERmotor_Init() {
   currentZ = 0.0;
 }
 
+bool Stepper_EndstopsReady() {
+  // INPUT_PULLUP means a released switch should read HIGH and a pressed
+  // (or shorted) switch should read LOW.
+  const int xState = digitalRead(X_ENDSTOP_PIN);
+  const int yState = digitalRead(Y_ENDSTOP_PIN);
+  const int zState = digitalRead(Z_ENDSTOP_PIN);
+
+  Serial.println("Initial end-stop check:");
+  Serial.print("  X: ");
+  Serial.println(xState == HIGH ? "RELEASED" : "PRESSED");
+  Serial.print("  Y: ");
+  Serial.println(yState == HIGH ? "RELEASED" : "PRESSED");
+  Serial.print("  Z: ");
+  Serial.println(zState == HIGH ? "RELEASED" : "PRESSED");
+
+  // Bare-minimum startup guard: do not start homing if any switch is
+  // already active. This avoids moving when a switch is stuck or shorted.
+  return xState == HIGH && yState == HIGH && zState == HIGH;
+}
+
 void Stepper_HomeX() {
   homeAxis(X_MOTOR_INDEX, X_DIR_PIN, X_ENDSTOP_PIN, "X", false);
 }

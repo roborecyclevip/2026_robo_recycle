@@ -10,6 +10,12 @@
 void STEPPERmotor_Init();
 
 /**
+ * @brief Check that no end-stop switch is active before startup movement.
+ * @return true when all switches are released (HIGH), otherwise false.
+ */
+bool Stepper_EndstopsReady();
+
+/**
  * @brief Home X axis using endstop.
  */
 void Stepper_HomeX();
