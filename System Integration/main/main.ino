@@ -114,6 +114,7 @@ void printHelp() {
   Serial.println(F("POS                 → Show encoder position"));
   Serial.println(F("LOAD                → Read load cell"));
   Serial.println(F("READCURRENT         → Read current sensor"));
+  Serial.println(F("READ_ENDSTOP        → Read endstops"));
   Serial.println(F("HELP                → This menu"));
   Serial.println(F("==========================\n"));
 }
@@ -494,12 +495,14 @@ void processCommand(String cmd) {
     Serial.println(F("Drill stopped."));
     return;
   }
+  
   if (cmd == "RPM") {
     float rpm = Encoder_GetSpeedRPM();
     Serial.print(F("Drill RPM: "));
     Serial.println(rpm, 1);
     return;
   }
+  
   if (cmd == "POS") {
     long pos = Encoder_GetPosition();
     float deg = pos * 360.0f / 1440.0f;
@@ -510,16 +513,23 @@ void processCommand(String cmd) {
     Serial.println(F(" degrees)"));
     return;
   }
+  
   if (cmd == "LOAD") {
     float load = Loadcell_Read();
     Serial.print(F("Load cell: "));
     Serial.println(load, 3);
     return;
   }
+  
   if (cmd == "READCURRENT") {
     double current_sensor = read_current_sensor();
     Serial.print(F("current sensor: "));
     Serial.println(current_sensor, 3);
+    return;
+  }
+
+  if (cmd == "READ_ENDSTOP") {
+    Stepper_EndstopsReady();
     return;
   }
 

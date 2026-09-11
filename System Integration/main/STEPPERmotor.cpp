@@ -12,13 +12,13 @@
 // === X AXIS ===
 #define X_STEP_PIN 2
 #define X_DIR_PIN 5
-#define X_ENDSTOP_PIN 10
+#define X_ENDSTOP_PIN 9
 #define X_MOTOR_INDEX 0
 
 // === Y AXIS ===
 #define Y_STEP_PIN 3
 #define Y_DIR_PIN 6
-#define Y_ENDSTOP_PIN 9
+#define Y_ENDSTOP_PIN 10
 #define Y_MOTOR_INDEX 1
 
 // === Z AXIS ===
