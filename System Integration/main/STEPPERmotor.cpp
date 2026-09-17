@@ -6,7 +6,7 @@
 #include "MultiStepperLite.h"
 
 // === CONFIG ===
-#define STEPS_PER_MM_XY 72.2543352601  // 10000 steps / 138.4 mm
+#define STEPS_PER_MM_XY 72.2543352601  // 10000 steps / (either 69.01 [elec] OR 69.00 mm [phys])
 #define STEPS_PER_MM_Z 206.611570248     // 10000 steps / 48.4 mm
 
 // === X AXIS ===
