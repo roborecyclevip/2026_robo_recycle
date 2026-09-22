@@ -18,6 +18,7 @@
 
 import serial
 import time
+import csv
 
 # Adjust your port (Raspberry Pi USB typically /dev/ttyACM0 or /dev/ttyUSB0)
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
@@ -52,21 +53,19 @@ def unscrew(x, y):
         if "UNSCREW complete." in line or "UNSCREW failed." in line:
             break
 
-# Example: list of screws
-screw_positions = [
-    (233.5, 195.0),
-    (233.5, 182.5),
-    (233.5, 169.5),
-    (222, 195.0),
-    (222, 182.5),
-    (222, 169.5),
-    (210.5, 195.0),
-    (210.5, 182.5),
-    (210.5, 169.5)
-    
-]
+# We treat the index as some id num for each screw
+coordinates_to_unscrew = []
 
-for x, y in screw_positions:
+# Get the coordinates from the CSV
+with open('coordinates.csv', 'r') as file:
+    for row in csv.reader(file):
+        row = (float(row[0]), float(row[1]))
+        coordinates_to_unscrew.push(row)
+
+print(coordinates_to_unscrew)
+# Output: [(10.0, 20.0), (113.0, 69.0), ...]   
+
+for x, y in coordinates_to_unscrew:
     unscrew(x, y)
     time.sleep(1)
 
