@@ -7,7 +7,7 @@
 
 // === CONFIG ===
 #define STEPS_PER_MM_XY 143.8848920863309352517985612 // 10000 steps / 69.5 <-- Used Python decimal library to calc
-#define STEPS_PER_MM_Z 206.611570248     // 10000 steps / 48.4 mm
+#define STEPS_PER_MM_Z 398.7240829346092503987240829     // 10000 steps / 25.08 mm
 
 // === X AXIS ===
 #define X_STEP_PIN 2
