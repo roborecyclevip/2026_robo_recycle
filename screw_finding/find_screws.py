@@ -4,7 +4,7 @@ import math
 
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 7
+TOTAL_SCREWS = 6
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 0
@@ -28,14 +28,14 @@ def find_screws():
     class_names = model.names
     screw_coordinates = [("x_coord", "y_coord")]
 
-    screw_coordinates.append(photo_capture(zoom_scale, cap, model, class_names))
+    screw_coordinates.extend(photo_capture(zoom_scale, cap, model, class_names))
     
     cap.release()
     cv2.destroyAllWindows()
 
     with open("coordinates.csv", mode="w", newline="", encoding="utf-8") as file:
-      writer = csv.writer(file)
-      writer.writerows(screw_coordinates)
+        writer = csv.writer(file)
+        writer.writerows(screw_coordinates)
 
 
 def photo_capture(zoom_scale, cap, model, class_names):
@@ -43,6 +43,7 @@ def photo_capture(zoom_scale, cap, model, class_names):
     screw_centers = []
     
     while num_boxes < TOTAL_SCREWS:
+        screw_centers = []
         ret, frame = cap.read()
         if not ret:
             print("End of stream or error reading frame.")
@@ -101,14 +102,9 @@ def find_center(x1, x2, y1, y2):
 
     return (center_x, center_y)
 
-def calculate_distance(screw_centers):
-    real_coords = []
+def calculate_distance(center_x, center_y):
 
-    for (screw_x, screw_y) in screw_centers:
-        x_real = (screw_x - X_ORIGIN) * RATIO
-        y_real = (screw_y - Y_ORIGIN) * RATIO
+    x_real = (center_x - X_ORIGIN) * RATIO
+    y_real = (center_y - Y_ORIGIN) * RATIO
 
-        real_coords.append((x_real, y_real))
-
-    print(real_coords)
-    return real_coords
+    return (x_real, y_real)
