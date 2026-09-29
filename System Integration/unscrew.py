@@ -19,6 +19,7 @@
 import serial
 import time
 import csv
+from screw_finding import find_screws
 
 # Adjust your port (Raspberry Pi USB typically /dev/ttyACM0 or /dev/ttyUSB0)
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
@@ -59,6 +60,7 @@ def unscrew(x, y):
 
 # We treat the index as some id num for each screw
 coordinates_to_unscrew = []
+find_screws() # Creates / updates CSV with screw coordinates
 
 # Get the coordinates from the CSV
 with open('coordinates.csv', 'r') as file:
