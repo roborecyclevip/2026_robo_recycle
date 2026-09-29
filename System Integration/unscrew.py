@@ -24,6 +24,8 @@ import csv
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 time.sleep(2)  # give Arduino time to reset
 
+# This function sends commands to the Arduino, 
+# checking if the answer given by the user is valid
 def send_answer(prompt, valid_answers):
     while True:
         answer = input(prompt).strip().upper()
@@ -34,6 +36,7 @@ def send_answer(prompt, valid_answers):
             return
         print("Please enter one of:", ", ".join(valid_answers.keys()))
 
+# This function sends unscrew command for any X Y coordinate
 def unscrew(x, y):
     cmd = f"UNSCREW {x} {y}\n"
     ser.write(cmd.encode())
@@ -46,10 +49,11 @@ def unscrew(x, y):
             print("Arduino:", line)
 
             if "Type YES or NO:" in line or "Please type YES or NO:" in line:
-                send_answer("YES/NO > ", {"YES": "YES", "Y": "YES", "NO": "NO", "N": "NO"})
+                send_answer("YES/NO > ", 
+                            {"YES": "YES", "Y": "YES", "NO": "NO", "N": "NO"})
             elif "Move UP or DOWN?" in line or "Please type UP or DOWN:" in line:
-                send_answer("UP/DOWN > ", {"UP": "UP", "U": "UP", "DOWN": "DOWN", "D": "DOWN"})
-
+                send_answer("UP/DOWN > ", 
+                            {"UP": "UP", "U": "UP", "DOWN": "DOWN", "D": "DOWN"})
         if "UNSCREW complete." in line or "UNSCREW failed." in line:
             break
 
@@ -58,15 +62,17 @@ coordinates_to_unscrew = []
 
 # Get the coordinates from the CSV
 with open('coordinates.csv', 'r') as file:
+    next(file) # Just skips that first line of headers
     for row in csv.reader(file):
         row = (float(row[0]), float(row[1]))
         coordinates_to_unscrew.push(row)
 
-print(coordinates_to_unscrew)
+print("Got these coordinates:\n", coordinates_to_unscrew)
 # Output: [(10.0, 20.0), (113.0, 69.0), ...]   
 
+# Attempt to unscrew them all
 for x, y in coordinates_to_unscrew:
     unscrew(x, y)
-    time.sleep(1)
+    time.sleep(1) # TODO: Figure out whether or not we need to sleep for longer or check stuff
 
 print("All screws done.")
