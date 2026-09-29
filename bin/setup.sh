@@ -58,3 +58,46 @@ fi
 "$PWD"/bin/arduino-cli core install "arduino:avr@$AVR_CORE_VERSION"
 "$PWD"/bin/arduino-cli compile --build-path "$BUILD_PATH" --fqbn "$FQBN" "$SKETCH_PATH"
 "$PWD"/bin/arduino-cli upload --input-dir "$BUILD_PATH" --fqbn "$FQBN" --port "$ARDUINO_PORT"
+
+# Then we try and download the relevant Python libaries
+VENV_DIR=".venv"
+
+# Check / Create Virtual Environment 
+if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/pyvenv.cfg" ]; then
+    echo "✓ Virtual environment already exists."
+else
+    echo "Creating virtual environment..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+source "$VENV_DIR/bin/activate"
+
+# Check if we have a venv that is active 
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "ERROR: Virtual environment not active!"
+    exit 1
+fi
+echo "Active venv: $VIRTUAL_ENV"
+
+# Check & Install Libraries 
+python -m pip install -U pip setuptools wheel
+
+# OpenCV (headless for RPi - no GUI)
+if pip show opencv-python &> /dev/null; then
+    echo "opencv-python-headless already installed"
+else
+    echo "Installing opencv-python-headless..."
+    pip install opencv-python-headless
+fi
+
+# Ultralytics
+if pip show ultralytics &> /dev/null; then
+    echo "ultralytics already installed"
+else
+    echo "Installing ultralytics..."
+    pip install ultralytics
+fi
+
+# Verify 
+python -c "import cv2; print(f'OpenCV installed and working version: {cv2.__version__}')"
+python -c "import ultralytics; print(f'Ultralytics installed and working version: {ultralytics.__version__}')"
