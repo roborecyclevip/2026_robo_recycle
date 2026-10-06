@@ -70,7 +70,7 @@ with open('coordinates.csv', 'r') as file:
     next(file) # Just skips that first line of headers
     for row in csv.reader(file):
         row = (float(row[0]), float(row[1]))
-        coordinates_to_unscrew.push(row)
+        coordinates_to_unscrew.append(row)
 
 print("Got these coordinates:\n", coordinates_to_unscrew)
 # Output: [(10.0, 20.0), (113.0, 69.0), ...]   

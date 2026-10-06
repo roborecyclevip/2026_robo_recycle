@@ -19,11 +19,12 @@ RATIO = 0.2293578
 
 def find_screws():
     model = YOLO("final_model.pt")
-    cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+    cap = cv2.VideoCapture(0)
     zoom_scale = 1.5
     if not cap.isOpened():
-        print("error")
-        return
+        print(cap)
+        raise Exception("Cap not opened, whatever that means")
+        
     
     class_names = model.names
     screw_coordinates = [("x_coord", "y_coord")]
