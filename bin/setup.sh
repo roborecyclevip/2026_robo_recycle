@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/bash
 # 
 # Setup script for Raspeberry Pi for VIP Project RoboRecycle
 # setup.sh
@@ -59,6 +59,8 @@ fi
 "$PWD"/bin/arduino-cli compile --build-path "$BUILD_PATH" --fqbn "$FQBN" "$SKETCH_PATH"
 "$PWD"/bin/arduino-cli upload --input-dir "$BUILD_PATH" --fqbn "$FQBN" --port "$ARDUINO_PORT"
 
+echo "Python stuff now"
+
 # Then we try and download the relevant Python libaries
 VENV_DIR=".venv"
 
@@ -72,7 +74,7 @@ fi
 
 source "$VENV_DIR/bin/activate"
 
-# Check if we have a venv that is active 
+Check if we have a venv that is active 
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "ERROR: Virtual environment not active!"
     exit 1
@@ -80,14 +82,14 @@ fi
 echo "Active venv: $VIRTUAL_ENV"
 
 # Check & Install Libraries 
-python -m pip install -U pip setuptools wheel
+python -m pip install --no-cache-dir -U pip setuptools wheel
 
 # OpenCV (headless for RPi - no GUI)
 if pip show opencv-python &> /dev/null; then
     echo "opencv-python-headless already installed"
 else
     echo "Installing opencv-python-headless..."
-    pip install opencv-python-headless
+    pip install --no-cache-dir opencv-python-headless
 fi
 
 # Ultralytics
@@ -95,7 +97,15 @@ if pip show ultralytics &> /dev/null; then
     echo "ultralytics already installed"
 else
     echo "Installing ultralytics..."
-    pip install ultralytics
+    pip install --no-cache-dir ultralytics
+fi
+
+# Pyserial (To import serial)
+if pip show pyserial &> /dev/null; then
+    echo "pyserial already installed"
+else
+    echo "Installing pyserial..."
+    pip install --no-cache-dir pyserial
 fi
 
 # Verify 

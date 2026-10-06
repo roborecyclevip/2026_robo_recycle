@@ -435,7 +435,7 @@ void processCommand(String cmd) {
     Serial.print(F(" degrees at PWM "));
     Serial.println(speed);
 
-    bool ok = Motor_RotateDegrees(deg, speed, 10000);
+    bool ok = Motor_RotateDegrees(deg, speed, 100000);
     Serial.println(ok ? F("Done.") : F("TIMEOUT!"));
     return;
 }

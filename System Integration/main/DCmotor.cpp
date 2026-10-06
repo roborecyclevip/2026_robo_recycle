@@ -112,11 +112,12 @@ bool Motor_RotateDegrees(float degrees, int speed, unsigned long timeoutMs)
           break;
         }
 
-        // ----- timeout? -----
-        if (timeoutMs && (millis() - start) >= timeoutMs) {
-            Motor_Brake();
-            return false;   // timed-out
-        }
+        // // ----- timeout? -----
+        // if (timeoutMs && (millis() - start) >= timeoutMs) {
+        //     Motor_Brake();
+        //     delay(1);
+        //     return false;   // timed-out
+        // }
 
         // Small delay to keep the loop responsive but not hog CPU
         delay(1);
@@ -125,5 +126,6 @@ bool Motor_RotateDegrees(float degrees, int speed, unsigned long timeoutMs)
     // 4. Stop
     // -------------------------------------------------------------------
     Motor_Brake();
+    Serial.flush();
     return true;            // success
 }
