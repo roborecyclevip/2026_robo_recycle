@@ -43,7 +43,7 @@ def main():
 '''
 def run_model(is_video: bool):
     model = YOLO("final_final.pt")
-    cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+    cap = cv2.VideoCapture(0)
     zoom_scale = 1.5
     if not cap.isOpened():
         print("error")

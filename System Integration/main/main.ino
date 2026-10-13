@@ -6,16 +6,13 @@
 #include "Loadcell.h"
 #include "Current.h"
 
-#define LOADCELL_THRESHOLD 5.0
-#define LOADCELL_ENGAGEMENT_DEADBAND 10.0
-
 #define SAFE_Z 80.0
 #define SCREW_DROPOFF_X 225.0
 #define SCREW_DROPOFF_Y 330.0
 #define SCREW_DROPOFF_APPROACH_Y 280.0
 
 #define STEPPER_INCREMENT 0.1
-#define SCREW_ALIGNMENT_NUDGE_MM 1.0
+#define SCREW_ALIGNMENT_NUDGE_MM 0.1
 
 float load_cell_reading = 0.0;
 float motor_speed = 0.0;

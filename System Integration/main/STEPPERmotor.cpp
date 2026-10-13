@@ -31,7 +31,7 @@
 #define STEP_INTERVAL_XY 10    // 100,000 steps/s = 10 µs/step
 #define STEP_INTERVAL_Z 33     // 30,000 steps/s ≈ 33 µs/step
 #define HOMING_STEP_INTERVAL 5000  // 200 steps/s = 5,000 µs/step
-#define HOMING_TIMEOUT_MS 8000
+#define HOMING_TIMEOUT_MS 20000
 
 // Global stepper instance and position variables
 MultiStepperLite steppers(3); // Initialize with 3 motors (X, Y, Z)
