@@ -58,26 +58,45 @@ def unscrew(x, y):
         if "UNSCREW complete." in line or "UNSCREW failed." in line:
             break
 
-# We treat the index as some id num for each screw
-coordinates_to_unscrew = []
-found_screws = find_screws() # Creates / updates CSV with screw coordinates
+# This function allows us to send any command
+def send_command(cmd):
+    cmd_str = cmd + '\n'          # Add newline as Arduino expects
+    ser.write(cmd_str.encode())   # Send bytes
+    time.sleep(0.1)               # Wait for Arduino to process
 
-if not found_screws:
-    raise Exception("we couldn't find screws")
+    # Read any available response
+    while ser.in_waiting:
+        response = ser.readline().decode(errors='ignore').strip()
+        if response:
+            print("Arduino:", response)
 
-# Get the coordinates from the CSV
-with open('coordinates.csv', 'r') as file:
-    next(file) # Just skips that first line of headers
-    for row in csv.reader(file):
-        row = (float(row[0]), float(row[1]))
-        coordinates_to_unscrew.append(row)
+def main():
+    # Start with moving everything that can be in the way of the camera
+    send_command("HOME")
 
-print("Got these coordinates:\n", coordinates_to_unscrew)
-# Output: [(10.0, 20.0), (113.0, 69.0), ...]   
+    # We treat the index as some id num for each screw
+    coordinates_to_unscrew = []
+    found_screws = find_screws() # Creates / updates CSV with screw coordinates
 
-# Attempt to unscrew them all
-for x, y in coordinates_to_unscrew:
-    unscrew(x, y)
-    time.sleep(1) # TODO: Figure out whether or not we need to sleep for longer or check stuff
+    if not found_screws:
+        raise Exception("we couldn't find screws")
 
-print("All screws done.")
+    # Get the coordinates from the CSV
+    with open('coordinates.csv', 'r') as file:
+        next(file) # Just skips that first line of headers
+        for row in csv.reader(file):
+            row = (float(row[0]), float(row[1]))
+            coordinates_to_unscrew.append(row)
+
+    print("Got these coordinates:\n", coordinates_to_unscrew)
+    # Output: [(10.0, 20.0), (113.0, 69.0), ...]   
+
+    # Attempt to unscrew them all
+    for x, y in coordinates_to_unscrew:
+        unscrew(x, y)
+        time.sleep(1) # TODO: Figure out whether or not we need to sleep for longer or check stuff
+
+    print("All screws done.")
+
+if __name__ == "__main__":
+    main()

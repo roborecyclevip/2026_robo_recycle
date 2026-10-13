@@ -1,24 +1,25 @@
 import cv2, csv
 from ultralytics import YOLO
 import math
-
+import os
+os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 6
+TOTAL_SCREWS = 5
 
 # x-coordinate for origin of L-fixture
-X_ORIGIN = 0
+X_ORIGIN = 72
 
 # y-coordinate for origin of L-fixture
-Y_ORIGIN = 0
+Y_ORIGIN = 169
 
 # ratio of mm per px
 # used to convert to real world coordinates
-RATIO = 0.2293578
+RATIO = 0.43668122271
 
 
 def find_screws():
-    model = YOLO("final_model.pt")
+    model = YOLO("screw_finding/final_final.pt")
     cap = cv2.VideoCapture(0)
     zoom_scale = 1.5
     if not cap.isOpened():
@@ -27,19 +28,20 @@ def find_screws():
         
     
     class_names = model.names
-    screw_coordinates = [("x_coord", "y_coord")]
-
-    screw_coordinates.extend(photo_capture(zoom_scale, cap, model, class_names))
     
+    screw_coordinates = []
+    screw_coordinates.extend(photo_capture(zoom_scale, cap, model, class_names))
+    final_coords = [("x_coord", "y_coord")]
+
+    for screw in screw_coordinates:
+        final_coords.append(calculate_distance(screw[0], screw[1]))
+
     cap.release()
     cv2.destroyAllWindows()
 
-    print("We ran")
-
     with open("coordinates.csv", mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        print("We ran")
-        writer.writerows(screw_coordinates)
+        writer.writerows(final_coords)
 
     with open('coordinates.csv', 'r') as file:
         print("File is generated with coordinates!")
@@ -81,9 +83,6 @@ def photo_capture(zoom_scale, cap, model, class_names):
 
             num_boxes = len(boxes);
             print("num boxes is", boxes)
-            print("confidence", confidences)
-            print('class_ids', class_ids)
-            print("HERERERERE", num_boxes);
 
             for box, conf, class_id in zip(boxes, confidences, class_ids):
                 x1, y1, x2, y2 = map(int, box)
@@ -116,5 +115,9 @@ def calculate_distance(center_x, center_y):
 
     x_real = (center_x - X_ORIGIN) * RATIO
     y_real = (center_y - Y_ORIGIN) * RATIO
-
+    print("x_dist:", (center_x - X_ORIGIN))
+    print("y_dist:", (center_y - Y_ORIGIN))
     return (x_real, y_real)
+
+if __name__ == "__main__":
+    find_screws();
