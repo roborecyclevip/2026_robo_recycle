@@ -8,14 +8,14 @@ os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 TOTAL_SCREWS = 5
 
 # x-coordinate for origin of L-fixture
-X_ORIGIN = 72
+X_ORIGIN = 94 #75 #72
 
 # y-coordinate for origin of L-fixture
-Y_ORIGIN = 169
+Y_ORIGIN = 171 #175 #169
 
 # ratio of mm per px
 # used to convert to real world coordinates
-RATIO = 0.43668122271
+RATIO = 0.462962962963
 
 
 def find_screws():
@@ -69,11 +69,11 @@ def photo_capture(zoom_scale, cap, model, class_names):
         min_x, max_x = int(center_x - radius_x), int(center_x + radius_x)
         min_y, max_y = int(center_y - radius_y), int(center_y + radius_y)
     
-        cropped_frame = frame[min_y:max_y, min_x:max_x]
-        zoomed_frame = cv2.resize(cropped_frame, (width, height))
+        # cropped_frame = frame[min_y:max_y, min_x:max_x]
+        # zoomed_frame = cv2.resize(cropped_frame, (width, height))
 
         # Run YOLOv8 inference on the frame
-        results = model(zoomed_frame, conf=0.5) # conf=0.5 means 50% confidence threshold
+        results = model(frame, conf=0.5) # conf=0.5 means 50% confidence threshold
 
         # Process and draw detections
         for r in results:
@@ -93,14 +93,14 @@ def photo_capture(zoom_scale, cap, model, class_names):
                 screw_centers.append((center_x, center_y))
 
 
-                cv2.rectangle(zoomed_frame, (x1, y1), (x2, y2), (0, 255, 0), 2) # Green rectangle
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2) # Green rectangle
 
-                cv2.putText(zoomed_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) # Green text
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) # Green text
 
-                cv2.imshow('YOLOv8 Object Detection', zoomed_frame)
+                cv2.imshow('YOLOv8 Object Detection', frame)
                 # img = cv2.imread(frame)
 
-                cv2.imwrite("saved_image.jpg", zoomed_frame)
+                cv2.imwrite("saved_image.jpg", frame)
 
     return screw_centers
 

@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 const int sensorPin = A9;
-const float mVperAmp = 100;
+const float mVperAmp = 185;
 const float referenceVoltage = 5.0; 
 
 double read_current_sensor() {
