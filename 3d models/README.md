@@ -2,6 +2,8 @@
 
 Open these STL files directly in your slicer. No Python or CAD setup needed.
 
+![Assembled and exploded clamp: upper cap, fixed centre body with motor feet, and lower cap](assembly_diagram.png)
+
 ## Print order
 
 1. Print the four `check_*.stl` files first. Check the nuts, both bearings and the motor-hole pattern against your actual parts.
