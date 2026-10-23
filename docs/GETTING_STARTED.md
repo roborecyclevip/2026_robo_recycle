@@ -128,6 +128,25 @@ What each command is checking:
 - `GOTO`: checks coordinate motion
 - `DRILL`: checks the drill motor, encoder, and driver
 
+## Logging Drill Current
+
+Use `LOGDRILL duration_ms speed [sample_ms]` to print CSV telemetry to the serial
+monitor. For example, `LOGDRILL 3000 100 50` runs for 3 seconds at speed 100 and
+prints a row every 50 ms. The default interval is 50 ms and the minimum is 20 ms.
+This command does not automatically save a CSV file.
+
+The columns are `time_ms,rpm,current_A,encoder_count,current_avg_A`.
+Both current columns are in amps. Plot `current_avg_A` for the smoother trend
+and compare `current_A` to see brief spikes. CSV readers must accept the new
+fifth column.
+
+The moving average uses the latest 5 logged readings and resets for each run.
+During startup, it averages only the samples collected so far. At 50 ms
+intervals, a full window spans 200 ms and introduces about 100 ms of lag for
+gradual changes. Short spikes are reduced in the average. Increasing the sample
+interval increases the smoothing time and lag. To change the window size,
+adjust `DRILL_CURRENT_AVERAGE_SAMPLES` in `main.ino` and upload again.
+
 ## Main Serial Commands
 
 The main firmware accepts these commands over serial at `115200` baud:

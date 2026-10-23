@@ -21,6 +21,9 @@ float targetX = 0.0;
 float targetY = 0.0;
 float targetZ = 0.0;
 
+// Keep this short so contact/load changes remain visible in the telemetry.
+constexpr uint8_t DRILL_CURRENT_AVERAGE_SAMPLES = 5;
+
 void logDrillTelemetry(unsigned long durationMs, int speed, unsigned long samplePeriodMs) {
   if (speed < -255) speed = -255;
   if (speed > 255) speed = 255;
@@ -39,8 +42,12 @@ void logDrillTelemetry(unsigned long durationMs, int speed, unsigned long sample
 
   unsigned long start = millis();
   unsigned long nextSample = start;
+  double currentWindow[DRILL_CURRENT_AVERAGE_SAMPLES] = {};
+  double currentSum = 0.0;
+  uint8_t currentSampleCount = 0;
+  uint8_t currentWindowIndex = 0;
 
-  Serial.println(F("time_ms,rpm,current_A,encoder_count"));
+  Serial.println(F("time_ms,rpm,current_A,encoder_count,current_avg_A"));
 
   while (millis() - start < durationMs) {
     Encoder_Update();
@@ -49,6 +56,15 @@ void logDrillTelemetry(unsigned long durationMs, int speed, unsigned long sample
     if (now >= nextSample) {
       float rpm = Encoder_GetSpeedRPM();
       double current = read_current_sensor();
+      // Average only real samples during startup, and reset for every run.
+      currentSum -= currentWindow[currentWindowIndex];
+      currentWindow[currentWindowIndex] = current;
+      currentSum += current;
+      currentWindowIndex = (currentWindowIndex + 1) % DRILL_CURRENT_AVERAGE_SAMPLES;
+      if (currentSampleCount < DRILL_CURRENT_AVERAGE_SAMPLES) {
+        ++currentSampleCount;
+      }
+      double currentAverage = currentSum / currentSampleCount;
       long position = Encoder_GetPosition();
 
       Serial.print(now - start);
@@ -57,7 +73,9 @@ void logDrillTelemetry(unsigned long durationMs, int speed, unsigned long sample
       Serial.print(',');
       Serial.print(current, 3);
       Serial.print(',');
-      Serial.println(position);
+      Serial.print(position);
+      Serial.print(',');
+      Serial.println(currentAverage, 3);
 
       nextSample += samplePeriodMs;
     }
@@ -106,6 +124,7 @@ void printHelp() {
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
   Serial.println(F("Alignment prompts   → FORWARD/BACKWARD/LEFT/RIGHT/DONE"));
   Serial.println(F("LOGDRILL ms spd [dt]→ Log RPM/current while drill spins"));
+  Serial.println(F("                     CSV includes raw current and 5-sample current average"));
   Serial.println(F("BRAKE               → Stop drill"));
   Serial.println(F("RPM                 → Show drill speed"));
   Serial.println(F("POS                 → Show encoder position"));
