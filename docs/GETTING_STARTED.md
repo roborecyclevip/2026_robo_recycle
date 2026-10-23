@@ -149,6 +149,80 @@ adjust `DRILL_CURRENT_AVERAGE_SAMPLES` in `main.ino` and upload again.
 
 ## Main Serial Commands
 
+### Sensor-based screw engagement test
+
+Upload the updated firmware, home the gantry, and use:
+
+```text
+UNSCREW_ENGAGE X Y Z [signed_speed] [finish_ms]
+```
+
+Replace X/Y/Z with measured screw coordinates. **Z is the expected engagement
+height and the deepest permitted descent**, not a clearance height. On this
+machine positive Z moves downward, so the approach height is `Z - 20 mm`.
+Z must be at least 20 mm; X/Y must be nonnegative. Coordinates must be within
+your machine's actual travel, as the existing motion system has no software
+travel envelope. The default speed is PWM `180` and the default finishing spin
+is `3000` ms. Negative PWM reverses the drill. Match the direction to your bit
+and screw. Optional PWM must be an integer from -255 to 255 excluding zero;
+finishing time must be an integer from 1 to 30000 ms.
+
+The routine:
+
+1. Brakes the drill and raises Z if needed before travelling across X/Y, then
+   positions the tool 20 mm above the expected engagement height.
+2. Spins at clearance, ignores the first second of startup, and measures RPM
+   magnitude and 5-sample averaged current over the next second. It prints their
+   means and ranges. A stopped or substantially changing RPM baseline cancels
+   the test before descent.
+3. Brakes for 500 ms, restarts, and waits another second at clearance so the
+   second startup surge is excluded from detection.
+4. Moves **directly** to the supplied engagement Z at the same step interval as
+   `GOTO`, with the drill spinning. It services Z movement and samples telemetry
+   together, then holds that Z while spinning for the finishing time. It does
+   this whether or not engagement is detected; detection does not request
+   further downward travel.
+5. Brakes, retracts 20 mm vertically, and prints either
+   `Screw engagement detected (RPM drop + current rise).` or
+   `Screw engagement NOT detected.`
+
+The initial detector requires an RPM magnitude drop of at least **2.5%** from the
+baseline on two checks 100 ms apart, plus an averaged-current rise of at least
+**0.08 A** within the preceding 200 ms. A match stays recorded for the rest of
+the test. Tune these experimental values in `EngagementDetection.h` using
+free-spinning and contact runs. Sensor-indicated contact does not prove the bit
+is seated in the screw or that the screw was removed.
+
+CSV telemetry is printed every 20 ms, with columns:
+
+```text
+time_ms,phase,z_mm,rpm,current_A,current_avg_A,engaged
+```
+
+Time restarts at each phase; descent and finishing share a clock. `engaged` is
+0 until a match, then 1. Startup rows are visible for inspection but excluded
+from detection. Output is sent over serial; no CSV file is saved automatically.
+
+Send `BRAKE` followed by a newline to abort during baseline sampling, the restart
+wait, descent, or finishing. An abort brakes the drill and stops Z, reports an
+aborted result, and stays at that position. Initial positioning and final
+retraction use the existing blocking movement calls, which cannot process
+serial commands during those moves. A descent lasting over 10 seconds also
+aborts. Other commands received during sampling are discarded.
+
+The encoder now counts only actual A-channel edges, including when an older
+routine polls it. Previously polling could add artificial counts, so the new
+free-spin RPM may differ from earlier `LOGDRILL` readings. Baselines are measured
+again for every test. Signed RPM is logged; detection compares its magnitude.
+
+Implementation is in `ScrewEngagement.cpp`; cooperative Z servicing is in
+`STEPPERmotor.cpp`. Native simulations can be run with
+`python3 tests/engagement/run_tests.py` (requires g++ and the installed
+MultiStepperLite source). They cover the supplied contact-trace excerpt,
+isolated signals, startup exclusion, detection and non-detection paths,
+aborts/timeouts, encoder polling, and Z position tracking. Hardware testing is
+still needed to tune the detector and verify clearance/coordinates.
+
 The main firmware accepts these commands over serial at `115200` baud:
 
 | Command | Example | What it does |

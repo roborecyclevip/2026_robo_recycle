@@ -1,4 +1,5 @@
 #include "Encoder.h"
+#include <util/atomic.h>
 
 /*
   Interrupt Pin Mapping for Common Arduino Boards:
@@ -42,6 +43,7 @@ void Encoder_ISR() {
 void Encoder_Init() {
   pinMode(encoder0pinA, INPUT);
   pinMode(encoder0pinB, INPUT);
+  lastA = digitalRead(encoder0pinA);
   attachInterrupt(digitalPinToInterrupt(encoder0pinA), Encoder_Update, CHANGE);
   lastTime = millis();
 }
@@ -65,19 +67,26 @@ void Encoder_Init() {
 // }
 
 void Encoder_Update() {
-  int stateA = digitalRead(encoder0pinA);
-  if ((lastA == LOW) && (stateA == HIGH)) {
-    int stateB = digitalRead(encoder0pinB);
-    direction = (stateB == HIGH);
-  }
-  lastA = stateA;
+  // This is called by the interrupt AND some older polling loops. Only count
+  // actual A-channel changes; polling a steady pin must not manufacture RPM.
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    int stateA = digitalRead(encoder0pinA);
+    if (stateA == lastA) return;
+    if ((lastA == LOW) && (stateA == HIGH)) {
+      int stateB = digitalRead(encoder0pinB);
+      direction = (stateB == HIGH);
+    }
+    lastA = stateA;
 
-  if (direction) pulseCount++;
-  else pulseCount--;
+    if (direction) pulseCount++;
+    else pulseCount--;
+  }
 }
 
 long Encoder_GetPosition() {
-  return pulseCount;
+  long count;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { count = pulseCount; }
+  return count;
 }
 
 float Encoder_GetSpeedRPM() {
@@ -85,7 +94,7 @@ float Encoder_GetSpeedRPM() {
   unsigned long deltaTime = now - lastTime;
 
   if (deltaTime >= 100) { // update every 100 ms
-    long count = pulseCount;
+    long count = Encoder_GetPosition();
     long deltaCount = count - lastCount;
 
     // revolutions in this time window
@@ -109,5 +118,8 @@ int Encoder_GetDirection() {
 }
 
 void Encoder_Reset() {
-  pulseCount = 0;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { pulseCount = 0; }
+  lastCount = 0;
+  lastTime = millis();
+  lastRPM = 0.0;
 }

@@ -56,4 +56,11 @@ bool Stepper_Pulse(char axis, int direction);
  */
 void Stepper_GetPosition(float &x_mm, float &y_mm, float &z_mm);
 
+// Cooperative Z movement: call Service frequently while doing other work.
+// Uses the same 200 us step interval as MoveTo; positive Z is downward.
+bool Stepper_StartZMove(float z_mm);
+void Stepper_ServiceZMove();
+bool Stepper_ZMoveBusy();
+void Stepper_StopZMove();
+
 #endif

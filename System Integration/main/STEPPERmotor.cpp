@@ -1,4 +1,5 @@
 #include <Stepper.h>
+#include <math.h>
 
 #ifndef STEPPERMOTOR_H
 #define STEPPERMOTOR_H
@@ -38,6 +39,10 @@ MultiStepperLite steppers(3); // Initialize with 3 motors (X, Y, Z)
 float currentX = 0.0; // Current position in mm
 float currentY = 0.0;
 float currentZ = 0.0;
+bool cooperativeZActive = false;
+long cooperativeZSteps = 0;
+float cooperativeZStart = 0.0;
+int cooperativeZDirection = 1;
 
 void setDirection(int dirPin, bool forward) {
   digitalWrite(dirPin, forward ? HIGH : LOW);
@@ -254,6 +259,38 @@ void Stepper_GetPosition(float &x_mm, float &y_mm, float &z_mm) {
   x_mm = currentX;
   y_mm = currentY;
   z_mm = currentZ;
+}
+
+bool Stepper_StartZMove(float z_mm) {
+  if (cooperativeZActive || !isfinite(z_mm)) return false;
+
+  cooperativeZStart = currentZ;
+  cooperativeZDirection = z_mm >= currentZ ? 1 : -1;
+  // Round toward the start so step quantization cannot travel beyond the limit.
+  cooperativeZSteps = (long)(fabs(z_mm - currentZ) * STEPS_PER_MM_Z);
+  if (cooperativeZSteps == 0) return true;
+  setDirection(Z_DIR_PIN, cooperativeZDirection < 0);
+  cooperativeZActive = steppers.start_finite(Z_MOTOR_INDEX, 200, cooperativeZSteps);
+  return cooperativeZActive;
+}
+
+void Stepper_ServiceZMove() {
+  if (!cooperativeZActive) return;
+  steppers.do_tasks();
+  const long completed = cooperativeZSteps - steppers.get_remaining_steps(Z_MOTOR_INDEX);
+  // Use emitted steps, rather than elapsed time, so a stopped move retains its position.
+  currentZ = cooperativeZStart + cooperativeZDirection * completed / STEPS_PER_MM_Z;
+  if (steppers.is_finished(Z_MOTOR_INDEX)) cooperativeZActive = false;
+}
+
+bool Stepper_ZMoveBusy() { return cooperativeZActive; }
+
+void Stepper_StopZMove() {
+  if (!cooperativeZActive) return;
+  Stepper_ServiceZMove(); // Save position BEFORE stop() discards remaining steps.
+  steppers.stop(Z_MOTOR_INDEX);
+  while (!steppers.is_finished(Z_MOTOR_INDEX)) steppers.do_tasks();
+  cooperativeZActive = false;
 }
 
 #endif

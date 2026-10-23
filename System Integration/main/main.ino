@@ -5,6 +5,9 @@
 #include "Loadcell_pi.h"
 #include "Loadcell.h"
 #include "Current.h"
+#include "ScrewEngagement.h"
+#include <stdlib.h>
+#include <math.h>
 
 #define SAFE_Z 80.0
 #define SCREW_DROPOFF_X 225.0
@@ -121,6 +124,7 @@ void printHelp() {
   Serial.println(F("PULSE axis dir count→ Send step pulses (example: PULSE X + 10)"));
   Serial.println(F("DRILL deg [spd]     → Rotate drill (spd=0-255)"));
   Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
+  Serial.println(F("UNSCREW_ENGAGE X Y Z [spd] [ms] → Test sensor-based engagement"));
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
   Serial.println(F("Alignment prompts   → FORWARD/BACKWARD/LEFT/RIGHT/DONE"));
   Serial.println(F("LOGDRILL ms spd [dt]→ Log RPM/current while drill spins"));
@@ -303,6 +307,39 @@ void processCommand(String cmd) {
     Serial.println(F("Homing all steppers..."));
     Stepper_HomeAll();
     Serial.println(F("Homed."));
+    return;
+  }
+
+  // Separate from the existing manual UNSCREW flow. Parse strictly so a missing
+  // or malformed coordinate cannot silently turn into a move to zero.
+  if (cmd == "UNSCREW_ENGAGE" || cmd.startsWith("UNSCREW_ENGAGE ")) {
+    float values[5] = {0, 0, 0, 180, 3000};
+    const char *cursor = cmd.c_str() + 14;
+    uint8_t count = 0;
+    bool valid = true;
+    while (*cursor) {
+      while (*cursor == ' ' || *cursor == '\t') ++cursor;
+      if (!*cursor) break;
+      if (count == 5) { valid = false; break; }
+      char *end;
+      double value = strtod(cursor, &end);
+      if (end == cursor || !isfinite(value) ||
+          (*end && *end != ' ' && *end != '\t')) {
+        valid = false;
+        break;
+      }
+      values[count++] = value;
+      cursor = end;
+    }
+    if (!valid || count < 3 || values[3] < -255 || values[3] > 255 ||
+        values[3] == 0 || values[3] != truncf(values[3]) ||
+        values[4] < 1 || values[4] > 30000 || values[4] != truncf(values[4])) {
+      Serial.println(F("Error: UNSCREW_ENGAGE X Y Z [signed_speed] [finish_ms]"));
+      return;
+    }
+    unscrew_screw_engagement(values[0], values[1], values[2],
+                             (int)values[3], (unsigned long)values[4]);
+    Stepper_GetPosition(targetX, targetY, targetZ);
     return;
   }
 
