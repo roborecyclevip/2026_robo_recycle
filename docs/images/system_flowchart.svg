@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="980" viewBox="0 0 3000 980">
+<rect width="100%" height="100%" fill="white"/>
+<text x="55" y="66" font-family="DejaVu Sans, Arial, sans-serif" font-size="44" font-weight="700" fill="#00AC86">System flowchart</text>
+<text x="55" y="102" font-family="DejaVu Sans, Arial, sans-serif" font-size="24" font-weight="400" fill="#64777B">CURRENT: manual-assisted removal   •   EXPERIMENTAL: RPM + current test   •   PLANNED: automatic engagement hand-off</text>
+<rect x="55" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="55" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="75" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">1  Initialise &amp; home</text>
+<text x="77" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Start / serial 115200</text>
+<text x="77" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Motor, encoder and gantry init</text>
+<text x="77" y="334" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Endstops ready?</text>
+<text x="77" y="374" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Yes → home axes</text>
+<text x="77" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">No → startup stays still</text>
+<polyline points="485,312 533,312" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="533,312 522.4690092573155,317.75310646325045 522.4690092573155,306.24689353674955" fill="#64777B"/>
+<rect x="545" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="545" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="565" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">2  Locate screw</text>
+<text x="567" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Input screw X,Y</text>
+<text x="567" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Serial / coordinate list</text>
+<text x="567" y="334" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Move at safe Z</text>
+<text x="567" y="374" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Manual XY nudges, then DONE</text>
+<text x="567" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Camera-to-XY automation: future</text>
+<polyline points="975,312 1023,312" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="1023,312 1012.4690092573155,317.75310646325045 1012.4690092573155,306.24689353674955" fill="#64777B"/>
+<rect x="1035" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="1035" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="1055" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">3  Approach / contact</text>
+<text x="1057" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Operator confirms contact</text>
+<text x="1057" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">UP / DOWN in 0.5 mm steps</text>
+<text x="1057" y="334" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Bounded search</text>
+<text x="1057" y="374" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Stop at contact</text>
+<text x="1057" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">8.5 mm search limit → fail</text>
+<polyline points="1465,312 1513,312" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="1513,312 1502.4690092573155,317.75310646325045 1502.4690092573155,306.24689353674955" fill="#64777B"/>
+<rect x="1525" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="1525" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="1545" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">4  Unscrew pass</text>
+<text x="1547" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Rotate counterclockwise</text>
+<text x="1547" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">180° per pass</text>
+<text x="1547" y="310" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Encoder feedback</text>
+<text x="1547" y="367" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Motor timeout</text>
+<text x="1547" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">8 seconds → fail</text>
+<polyline points="1955,312 2003,312" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="2003,312 1992.4690092573155,317.75310646325045 1992.4690092573155,306.24689353674955" fill="#64777B"/>
+<rect x="2015" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="2015" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="2035" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">5  Confirm removal</text>
+<text x="2037" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Did screw drop?</text>
+<text x="2037" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Operator YES → continue</text>
+<text x="2037" y="334" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">If NO</text>
+<text x="2037" y="374" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Try another pass?</text>
+<text x="2037" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Optional 0.5 mm Z feed → repeat</text>
+<polyline points="2445,312 2493,312" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="2493,312 2482.4690092573155,317.75310646325045 2482.4690092573155,306.24689353674955" fill="#64777B"/>
+<rect x="2505" y="133" width="430" height="362" rx="12" fill="white" stroke="#D5E5E0" stroke-width="2"/>
+<rect x="2505" y="133" width="430" height="58" rx="12" fill="#00AC86" stroke="#00AC86" stroke-width="2"/>
+<text x="2525" y="171" font-family="DejaVu Sans, Arial, sans-serif" font-size="27" font-weight="700" fill="white">6  Retract &amp; transfer</text>
+<text x="2527" y="237" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Return to safe Z</text>
+<text x="2527" y="277" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Brake spindle</text>
+<text x="2527" y="334" font-family="DejaVu Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#233A40">Move to magnet / drop-off</text>
+<text x="2527" y="374" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Next coordinate → step 2</text>
+<text x="2527" y="407" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">No more screws → finish</text>
+<polyline points="2220,495 2220,536 1740,536 1740,495" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="1740,495 1745.7531064632503,505.5309907426845 1734.2468935367497,505.5309907426845" fill="#64777B"/>
+<text x="1820" y="528" font-family="DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="400" fill="#64777B">NO → adjust / repeat pass</text>
+<polyline points="2720,495 2720,577 760,577 760,495" fill="none" stroke="#64777B" stroke-width="3"/>
+<polygon points="760,495 765.7531064632504,505.5309907426845 754.2468935367496,505.5309907426845" fill="#64777B"/>
+<text x="1050" y="567" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#00AC86">MORE SCREWS → next XY</text>
+<rect x="55" y="620" width="920" height="255" rx="12" fill="#EFF7F8" stroke="#A3C4CC" stroke-width="2"/>
+<text x="80" y="664" font-family="DejaVu Sans, Arial, sans-serif" font-size="26" font-weight="700" fill="#277085">EXPERIMENTAL TEST — already in the repo</text>
+<text x="80" y="708" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">UNSCREW_ENGAGE: baseline free-spin RPM/current →</text>
+<text x="80" y="741" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">bounded Z approach while sampling both signals →</text>
+<text x="80" y="774" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">finish the same timed spin → brake / retract / report.</text>
+<text x="80" y="825" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#277085">Detection is observational; it does not yet trigger step 4.</text>
+<rect x="1010" y="620" width="1935" height="255" rx="12" fill="#FFF8EA" stroke="#D8B878" stroke-width="2"/>
+<text x="1038" y="664" font-family="DejaVu Sans, Arial, sans-serif" font-size="26" font-weight="700" fill="#B97718">PLANNED — replace the contact prompt with combined sensing</text>
+<text x="1038" y="708" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Stable free-spin baseline → lower within bounds → sustained RPM drop AND current rise → engagement candidate.</text>
+<text x="1038" y="754" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#233A40">Confirm / validate seating → hand off to counterclockwise unscrew passes. If absent: bounded retry or stop.</text>
+<text x="1038" y="800" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="700" fill="#B97718">Automatic reverse/hand-off and reliable release sensing are not integrated in the current removal routine.</text>
+<text x="55" y="928" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="400" fill="#64777B">No load cell in the intended hardware workflow. Legacy load-cell initialisation and prompt wording remain in firmware.</text>
+<text x="55" y="963" font-family="DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="400" fill="#64777B">Code reference: main.ino • Loadcell_pi.cpp • ScrewEngagement.cpp • EngagementDetection.h   |   Updated 28 October 2026</text>
+</svg>

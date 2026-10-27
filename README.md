@@ -25,8 +25,15 @@ Reference material:
 - Homes a 3-axis gantry with end stops
 - Moves the tool head to absolute X/Y/Z positions
 - Rotates a DC drill motor by a requested number of degrees using encoder feedback
-- Reads a load cell under the workpiece
-- Runs an `UNSCREW` routine at a hard-coded or user-provided XY position
+- Logs spindle RPM and motor current, including a five-sample current average
+- Runs a manual-assisted `UNSCREW` routine at a supplied XY position
+- Provides a separate experimental `UNSCREW_ENGAGE` test using RPM drop and current rise
+
+## System Flowchart
+
+![Current workflow and planned RPM/current engagement](docs/images/system_flowchart.svg)
+
+See [the updated flowchart and implementation notes](docs/SYSTEM_FLOWCHART.md). The physical load cell has been removed. The normal removal cycle still uses operator prompts; automatic RPM/current engagement hand-off is planned, not yet integrated.
 
 ## High-Level Architecture
 
@@ -37,8 +44,9 @@ flowchart LR
   Stepper --> XYZ["X, Y, Z stepper motors"]
   Mega --> Driver["DC motor driver"]
   Driver --> Drill["Drill motor with encoder"]
-  Mega --> HX["HX711 amplifier"]
-  HX --> Load["Load cell under bed"]
+  Encoder["Spindle encoder / RPM"] --> Mega
+  Current["Motor current sensor"] --> Mega
+  Camera["Overhead camera"] -. "Future automated screw coordinates" .-> Host
   Mega --> Endstops["X, Y, Z end stops"]
 ```
 
@@ -47,8 +55,8 @@ flowchart LR
 1. Open [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 2. Install the required Arduino libraries. The main firmware depends on `HX711` and `MultiStepperLite`, which are referenced by the code but not bundled in this repo.
 3. Open `System Integration/main/main.ino` in Arduino IDE and upload it to the Arduino Mega 2560.
-4. Open a serial monitor at `115200` baud and run `HELP`, `HOME`, `LOAD`, and `GOTO`.
-5. Do not run `UNSCREW` until you have checked end stops, motor direction, and load-cell readings on your own hardware.
+4. Open a serial monitor at `115200` baud and run `HELP`, `HOME`, `RPM`, `READCURRENT`, and `GOTO`.
+5. Check end stops, motor direction, tool clearance and operator prompts before running `UNSCREW` on your hardware.
 
 ## Current Status
 
@@ -56,8 +64,9 @@ This is a partially working lab prototype, not a polished turnkey system.
 
 Known limitations:
 
-- `UNSCREWCHAIN` currently ignores user-supplied coordinates and still uses the built-in `hardCodePoints[]` array.
-- The load-cell thresholds in `main.ino` are installation-specific and need to be re-measured on each real setup.
+- `UNSCREWCHAIN` uses a coordinate list, but contact and release decisions remain manual; it currently continues after a failed screw.
+- Legacy load-cell initialisation and prompt wording remain in firmware even though the physical sensor is removed.
+- Experimental RPM/current thresholds need tuning and do not prove that the bit is seated; the test does not yet trigger automatic reversal or the main removal routine.
 - The screw-retention approach is magnetic, so it may not hold non-magnetic screws.
 - Several files in `Test files/` are older experiments and use different baud rates and command formats from the main system.
 
