@@ -15,8 +15,8 @@ USE_CAMERA = True        # Like unscrew.py: find fresh screws before removal
 COORDINATES_CSV = Path(__file__).resolve().parent / "coordinates.csv"
 
 # Position of the CSV's reference dot relative to the gantry origin, in mm.
-X_OFFSET = 99.8
-Y_OFFSET = 98.5
+X_OFFSET = -2 #DANGEROUS TODO: FIX THIS CRAP
+Y_OFFSET = 9
 # Goto z 119 to see if it's on the dot :P
 
 # 113.2, 110.2, 105
