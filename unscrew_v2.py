@@ -28,6 +28,11 @@ APPROACH_CLEARANCE = 2.0  # Start contact checking at Z=109 with these settings
 Z_STEP = 0.5
 ALIGNMENT_STEP = 0.1
 
+# Engagement test: bounded descent to CONTACT_Z. Calibrate on the real rig.
+ENGAGEMENT_SPEED = 180  # Signed PWM, match desired drill direction
+ENGAGEMENT_FINISH_MS = 3000
+ENGAGEMENT_RESPONSE_TIMEOUT_S = 60
+
 # Each pass stops the drill before asking whether the screw is free.
 DRILL_DEGREES = -180     # Negative degrees means reverse
 DRILL_SPEED = 180        # Positive PWM speed: 1 to 255
@@ -86,6 +91,35 @@ def send_command(cmd):
         print("Arduino:", response)
         if response == expected or expected is None:
             return
+
+def detect_engagement(x, y):
+    """Run Arduino current/RPM engagement test; return True only on detection."""
+    cmd = (f"UNSCREW_ENGAGE {x:.3f} {y:.3f} {CONTACT_Z:.3f} "
+           f"{ENGAGEMENT_SPEED} {ENGAGEMENT_FINISH_MS}")
+    ser.reset_input_buffer()
+    ser.write((cmd + "\n").encode())
+    print("Sent:", cmd)
+    deadline = time.monotonic() + ENGAGEMENT_RESPONSE_TIMEOUT_S
+    detected_z = None
+    while time.monotonic() < deadline:
+        response = ser.readline().decode(errors="replace").strip()
+        if not response:
+            continue
+        print("Arduino:", response)
+        if response.startswith("ENGAGEMENT_Z:"):
+            detected_z = float(response.split(":", 1)[1])
+        if response == "ENGAGEMENT_RESULT:DETECTED":
+            if detected_z is None or not (SAFE_Z <= detected_z <= CONTACT_Z):
+                raise RuntimeError("Missing or invalid stopped Z; do not continue")
+            return detected_z
+        if response in ("ENGAGEMENT_RESULT:NOT_DETECTED", "ENGAGEMENT_RESULT:ABORTED"):
+            return False
+        if response.startswith("Error: UNSCREW_ENGAGE"):
+            raise RuntimeError(response)
+    # Arduino may still be busy. Stop it, then refuse to continue automatically.
+    ser.write(b"BRAKE\n")
+    raise TimeoutError("Engagement response timed out; inspect and reset the machine safely")
+
 
 def move_to(x, y, z):
     """
@@ -171,23 +205,25 @@ def unscrew(x, y):
         move_to(x, y, SAFE_Z)
         previous_move = (answer, distance)
 
-    # 3. Approach just above the expected contact height.
-    z = CONTACT_Z - APPROACH_CLEARANCE
-    move_to(x, y, z)
+    # 3. Arduino performs bounded descent and stops at the detected contact Z.
+    # It reports detection; it does NOT retract on success.
+    print("Starting automatic engagement detection...")
+    detected_z = detect_engagement(x, y)
+    if detected_z is False:
+        print("No reliable engagement detected. Aborting this screw.")
+        send_command("BRAKE")
+        move_to(x, y, SAFE_Z)
+        return
 
-    # 4. Adjust Z directly. DONE means the bit is touching and engaged.
-    # Enter initially lowers one Z_STEP, then repeats the last UP/DOWN move.
-    previous_move = ("DOWN", Z_STEP)
-    while True:
-        answer, distance = ask_adjustment("Contact: U/D [mm], Enter repeat, DONE engaged", ("UP", "DOWN"), Z_STEP, previous_move)
-        if answer == "DONE":
-            break
-        if answer == "UP":
-            z -= distance
-        else:
-            z += distance
-        move_to(x, y, z)
-        previous_move = (answer, distance)
+    # 4. Hold the tool in place until the operator confirms engagement.
+    answer = ask_manual("Is the bit actually engaged? YES/NO", ("YES", "NO"))
+    if answer != "YES":
+        print("Engagement rejected. Aborting this screw.")
+        send_command("BRAKE")
+        move_to(x, y, SAFE_Z)
+        return
+    z = detected_z
+    print(f"Engagement confirmed at Z={z:.3f} mm. Continuing unscrewing.")
 
     # 5. Enter runs one drill pass; DONE means the screw has come free.
     # U/D adjusts Z without drilling; STOP ends this screw and raises the bit.
