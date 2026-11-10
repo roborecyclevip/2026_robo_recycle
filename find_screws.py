@@ -2,6 +2,7 @@ import cv2, csv
 from ultralytics import YOLO
 import math
 import os
+import numpy as np
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
@@ -16,6 +17,12 @@ Y_ORIGIN = 56 #130
 # ratio of mm per px
 # used to convert to real world coordinates
 RATIO = 0.355871886121
+
+HSV_COLOURS = {
+    "green":  [[40, 80, 60],  [80, 255, 255]],
+    "blue":   [[100, 80, 60], [130, 255, 255]],
+    "yellow": [[20, 80, 100], [35, 255, 255]],
+}
 
 
 def find_screws():
@@ -119,5 +126,53 @@ def calculate_distance(center_x, center_y):
     print("y_dist:", (center_y - Y_ORIGIN))
     return (x_real, y_real)
 
+
+
+
+def find_coloured_dot(frame, lo, hi):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array(lo), np.array(hi))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not cnts:
+        return None
+    c = max(cnts, key=cv2.contourArea)
+    m = cv2.moments(c)
+    if m["m00"] == 0:
+        return None
+    return (m["m10"] / m["m00"], m["m01"] / m["m00"])
+
+
+
+def test_coloured_dots(colour):
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise SystemExit("Camera not opened")
+    
+    lo, hi = HSV_COLOURS[colour]
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+    
+        p = find_coloured_dot(frame, lo, hi)
+        if p is None:
+            cv2.putText(frame, f"{colour}: NOT FOUND", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        else:
+            cx, cy = int(p[0]), int(p[1])
+            cv2.circle(frame, (cx, cy), 12, (0, 255, 0), 2)
+            cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
+            cv2.putText(frame, f"{colour}: ({p[0]:.1f}, {p[1]:.1f})", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+    
+        cv2.imshow("detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
+
 if __name__ == "__main__":
-    find_screws();
+    # find_screws();
+    test_coloured_dots("blue")
