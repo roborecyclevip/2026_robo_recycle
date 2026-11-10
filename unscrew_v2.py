@@ -16,14 +16,16 @@ COORDINATES_CSV = Path(__file__).resolve().parent / "coordinates.csv"
 
 # Position of the CSV's reference dot relative to the gantry origin, in mm.
 X_OFFSET = -2 #DANGEROUS TODO: FIX THIS CRAP
-Y_OFFSET = 9
-# Goto z 119 to see if it's on the dot :P
+Y_OFFSET = 11
+# Goto z 210 to see if it's on the dot the OFFSET
+
+CAMERA_SCANNING_HEIGHT = 200
 
 # 113.2, 110.2, 105
 
 # Increasing Z moves DOWN; decreasing Z moves UP. All distances are in mm.
-CONTACT_Z = 111.0
-SAFE_Z = 80.0
+CONTACT_Z = 200.0 # 203
+SAFE_Z = 190.0
 APPROACH_CLEARANCE = 2.0  # Start contact checking at Z=109 with these settings
 Z_STEP = 0.5
 ALIGNMENT_STEP = 0.1
@@ -240,6 +242,8 @@ def main():
 
     # Home before taking the camera image, just like unscrew.py.
     send_command("HOME")
+    # move to level of Camera
+    move_to(0, 0, CAMERA_SCANNING_HEIGHT)
     if USE_CAMERA:
         # The existing finder expects to run from the project directory.
         from find_screws import find_screws

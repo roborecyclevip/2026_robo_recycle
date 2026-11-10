@@ -8,14 +8,14 @@ os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 TOTAL_SCREWS = 5
 
 # x-coordinate for origin of L-fixture
-X_ORIGIN = 137
+X_ORIGIN = 74 #137
 
 # y-coordinate for origin of L-fixture
-Y_ORIGIN = 130
+Y_ORIGIN = 56 #130
 
 # ratio of mm per px
 # used to convert to real world coordinates
-RATIO = 0.490196078431
+RATIO = 0.355871886121
 
 
 def find_screws():
