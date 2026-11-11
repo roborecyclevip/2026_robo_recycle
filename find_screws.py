@@ -12,16 +12,16 @@ TOTAL_SCREWS = 5
 X_ORIGIN = 74 #137
 
 # y-coordinate for origin of L-fixture
-Y_ORIGIN = 56 #130
+Y_ORIGIN = 56 #130 5
 
 # ratio of mm per px
 # used to convert to real world coordinates
 RATIO = 0.355871886121
 
 HSV_COLOURS = {
-    "green":  [[40, 80, 60],  [80, 255, 255]],
-    "blue":   [[100, 80, 60], [130, 255, 255]],
-    "yellow": [[20, 80, 100], [35, 255, 255]],
+    "green":  [[40, 80, 60],  [83, 255, 255]],
+    "blue":   [[85, 80, 60], [100, 255, 255]],
+    "orange": [[5, 80, 60], [20, 255, 255]],
 }
 
 
@@ -175,4 +175,4 @@ def test_coloured_dots(colour):
 
 if __name__ == "__main__":
     # find_screws();
-    test_coloured_dots("blue")
+    test_coloured_dots("green")
