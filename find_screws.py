@@ -6,7 +6,7 @@ import numpy as np
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 5
+TOTAL_SCREWS = 4
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
@@ -189,6 +189,7 @@ def get_affine(frame):
     src, dst = [], []
     for name, (lo, hi) in HSV_COLOURS.items():
         p = find_coloured_dot(frame, lo, hi)
+        print(name, p)
         if p is None:
             return None            # a dot was not found
         src.append(p)
