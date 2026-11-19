@@ -19,9 +19,9 @@ Y_ORIGIN = 56 #130 5
 RATIO = 0.355871886121
 
 HSV_COLOURS = {
-    "green":  [[40, 80, 60],  [83, 255, 255]],
-    "blue":   [[85, 80, 60], [100, 255, 255]],
-    "orange": [[5, 80, 60], [20, 255, 255]],
+    "purple":  [[123, 80, 60],  [160, 255, 255]],
+    "blue":   [[85, 80, 60], [120, 255, 255]],
+    "orange": [[5, 80, 60], [17, 255, 255]],
 }
 
 DOTS_MM = {
@@ -155,34 +155,35 @@ def find_coloured_dot(frame, lo, hi):
 
 
 
-# def test_coloured_dots(colour):
-#     cap = cv2.VideoCapture(0)
-#     if not cap.isOpened():
-#         raise SystemExit("Camera not opened")
+def test_coloured_dots(colour):
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise SystemExit("Camera not opened")
     
-#     lo, hi = HSV_COLOURS[colour]
-#     while True:
-#         ok, frame = cap.read()
-#         if not ok:
-#             break
+    lo, hi = HSV_COLOURS[colour]
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
     
-#         p = find_coloured_dot(frame, lo, hi)
-#         if p is None:
-#             cv2.putText(frame, f"{colour}: NOT FOUND", (10, 30),
-#                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-#         else:
-#             cx, cy = int(p[0]), int(p[1])
-#             cv2.circle(frame, (cx, cy), 12, (0, 255, 0), 2)
-#             cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
-#             cv2.putText(frame, f"{colour}: ({p[0]:.1f}, {p[1]:.1f})", (10, 30),
-#                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        p = find_coloured_dot(frame, lo, hi)
+        if p is None:
+            cv2.putText(frame, f"{colour}: NOT FOUND", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        else:
+            cx, cy = int(p[0]), int(p[1])
+            cv2.circle(frame, (cx, cy), 12, (0, 255, 0), 2)
+            cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
+            cv2.putText(frame, f"{colour}: ({p[0]:.1f}, {p[1]:.1f})", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     
-#         cv2.imshow("detection", frame)
-#         if cv2.waitKey(1) & 0xFF == ord("q"):
-#             break
+        cv2.imshow("detection", frame)
+        cv2.imwrite("colours.jpg", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
     
-#     cap.release()
-#     cv2.destroyAllWindows()
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def get_affine(frame):
@@ -212,8 +213,31 @@ def calibrate(cap, n=10):
             Ms.append(M)
     return np.mean(Ms, axis=0) if Ms else None
 
+def take_photos():
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print(cap)
+        raise Exception("Cap not opened, whatever that means")
+
+    count = 0
+    total = 80
+    while count < total:
+        ret, frame = cap.read()
+        if not ret:
+            print("End of stream or error reading frame.")
+            return
+
+        cv2.imwrite(f"18th-nov-photos/saved_image-{count}.jpg", frame)
+        print(f"18th-nov-photos/saved_image-{count}.jpg")
+        count += 1
+
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    find_screws();
-    # test_coloured_dots("green")
+    # find_screws()
+    test_coloured_dots("orange")
+    # take_photos()
