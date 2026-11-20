@@ -201,17 +201,51 @@ def pixel_to_mm(M, cx, cy):
     x, y = M @ np.array([cx, cy, 1.0])
     return (x, y)
 
+# def calibrate(cap, n=10):
+#     """Average the transform over a few frames to reduce noise."""
+#     Ms = []
+#     for _ in range(n):
+#         ok, frame = cap.read()
+#         if not ok:
+#             continue
+#         M = get_affine(frame)
+#         if M is not None:
+#             Ms.append(M)
+#     return np.mean(Ms, axis=0) if Ms else None
+
 def calibrate(cap, n=10):
-    """Average the transform over a few frames to reduce noise."""
-    Ms = []
+    positions = {name: [] for name in HSV_COLOURS}
+
     for _ in range(n):
         ok, frame = cap.read()
         if not ok:
             continue
-        M = get_affine(frame)
-        if M is not None:
-            Ms.append(M)
-    return np.mean(Ms, axis=0) if Ms else None
+
+        for name, (lo, hi) in HSV_COLOURS.items():
+            p = find_coloured_dot(frame, lo, hi)
+
+            if p is not None:
+                positions[name].append(p)
+
+    # Make sure every dot was detected
+    if any(len(points) == 0 for points in positions.values()):
+        return None
+
+    # Average the pixel coordinates of each dot
+    src = []
+    dst = []
+
+    for name in HSV_COLOURS:
+        avg_position = np.median(positions[name], axis=0)
+        print(name, avg_position);
+        src.append(avg_position)
+        dst.append(DOTS_MM[name])
+
+    return cv2.getAffineTransform(
+        np.float32(src),
+        np.float32(dst)
+    )
+
 
 
 
