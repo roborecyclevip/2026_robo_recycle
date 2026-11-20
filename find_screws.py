@@ -6,7 +6,7 @@ import numpy as np
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 4
+TOTAL_SCREWS = 6
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
@@ -19,20 +19,21 @@ Y_ORIGIN = 56 #130 5
 RATIO = 0.355871886121
 
 HSV_COLOURS = {
-    "green":  [[40, 80, 60],  [83, 255, 255]],
-    "blue":   [[85, 80, 60], [100, 255, 255]],
-    "orange": [[5, 80, 60], [20, 255, 255]],
+    "purple":  [[130, 50, 50],  [160, 255, 255]],
+    "blue":   [[90, 80, 60], [128, 255, 255]],
+    "orange": [[10, 100, 60], [25, 255, 255]],
 }
 
 DOTS_MM = {
-    "green": (65, 12),
-    "blue": (0.15, 11),
-    "orange": (0.15, 55.7)
+    "purple": (0, 60.4),
+    "blue": (0, 12),
+    "orange": (68, 10.3)
 }
 
 
 def find_screws():
-    model = YOLO("screw_finding/final_final.pt")
+    #model = YOLO("screw_finding/final_final.pt")
+    model = YOLO("fake_hdd_model.pt")
     cap = cv2.VideoCapture(0)
     zoom_scale = 1.5
     if not cap.isOpened():
@@ -215,5 +216,5 @@ def calibrate(cap, n=10):
 
 
 if __name__ == "__main__":
-    find_screws();
+    find_screws()
     # test_coloured_dots("green")
