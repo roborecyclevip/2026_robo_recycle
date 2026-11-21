@@ -251,6 +251,46 @@ def calibrate(cap, n=10):
             if p is not None:
                 positions[name].append(p)
 
+                cx, cy = map(int, p)
+
+                # Draw a circle around the detected dot
+                cv2.circle(
+                    frame,
+                    (cx, cy),
+                    10,
+                    (0, 255, 0),
+                    2
+                )
+
+                # Draw a small centre point
+                cv2.circle(
+                    frame,
+                    (cx, cy),
+                    3,
+                    (0, 0, 255),
+                    -1
+                )
+
+                # Display the colour and coordinates
+                cv2.putText(
+                    frame,
+                    f"{name}: ({cx}, {cy})",
+                    (cx + 15, cy - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (255, 255, 255),
+                    2
+                )
+
+            else:
+                print(f"{name} not found!")
+
+        # Display the camera frame
+        cv2.imshow("Calibration Dots", frame)
+        cv2.waitKey(100)
+
+    cv2.destroyWindow("Calibration Dots")
+
     # Make sure every dot was detected
     if any(len(points) == 0 for points in positions.values()):
         return None
@@ -551,7 +591,148 @@ def refine_screw_center(frame, box):
 
 
 
+def tune_hough(cap, model):
+
+    # Create a window for the sliders
+    cv2.namedWindow("Hough Tuning")
+
+    # Create trackbars
+    cv2.createTrackbar("dp x 10", "Hough Tuning", 12, 30, lambda x: None)
+    cv2.createTrackbar("param1", "Hough Tuning", 100, 300, lambda x: None)
+    cv2.createTrackbar("param2", "Hough Tuning", 25, 100, lambda x: None)
+    cv2.createTrackbar("minRadius", "Hough Tuning", 5, 100, lambda x: None)
+    cv2.createTrackbar("maxRadius", "Hough Tuning", 40, 150, lambda x: None)
+
+    while True:
+
+        ret, frame = cap.read()
+
+        if not ret:
+            break
+
+        # Run YOLO
+        results = model(frame, conf=0.5, verbose=False)
+
+        boxes = results[0].boxes.xyxy.cpu().numpy()
+
+        if len(boxes) == 0:
+            cv2.imshow("Hough Tuning", frame)
+
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+            continue
+
+        # For tuning, just use the first detected screw
+        x1, y1, x2, y2 = map(int, boxes[0])
+
+        width = x2 - x1
+        height = y2 - y1
+
+        padding = int(0.2 * max(width, height))
+
+        img_h, img_w = frame.shape[:2]
+
+        crop_x1 = max(0, x1 - padding)
+        crop_y1 = max(0, y1 - padding)
+        crop_x2 = min(img_w, x2 + padding)
+        crop_y2 = min(img_h, y2 + padding)
+
+        crop = frame[crop_y1:crop_y2, crop_x1:crop_x2]
+
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+
+        blurred = cv2.GaussianBlur(gray, (5, 5), 1.5)
+
+        # Read slider values
+        dp = cv2.getTrackbarPos("dp x 10", "Hough Tuning") / 10.0
+        param1 = cv2.getTrackbarPos("param1", "Hough Tuning")
+        param2 = cv2.getTrackbarPos("param2", "Hough Tuning")
+        min_radius = cv2.getTrackbarPos("minRadius", "Hough Tuning")
+        max_radius = cv2.getTrackbarPos("maxRadius", "Hough Tuning")
+
+        # Avoid invalid values
+        dp = max(dp, 0.1)
+        param1 = max(param1, 1)
+        param2 = max(param2, 1)
+
+        # Ensure maxRadius > minRadius
+        max_radius = max(max_radius, min_radius + 1)
+
+        # Detect circles
+        circles = cv2.HoughCircles(
+            blurred,
+            cv2.HOUGH_GRADIENT,
+            dp=dp,
+            minDist=max(8, min(width, height) // 2),
+            param1=param1,
+            param2=param2,
+            minRadius=min_radius,
+            maxRadius=max_radius
+        )
+
+        # Draw results
+        display = crop.copy()
+
+        if circles is not None:
+
+            circles = np.round(circles[0]).astype(int)
+
+            for cx, cy, radius in circles:
+
+                cv2.circle(
+                    display,
+                    (cx, cy),
+                    radius,
+                    (0, 255, 0),
+                    2
+                )
+
+                cv2.circle(
+                    display,
+                    (cx, cy),
+                    3,
+                    (255, 0, 0),
+                    -1
+                )
+
+        # Display current parameter values
+        text = f"dp={dp}, p1={param1}, p2={param2}"
+        cv2.putText(
+            display,
+            text,
+            (5, 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 255, 255),
+            1
+        )
+
+        cv2.imshow("Hough Tuning", display)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    cv2.destroyWindow("Hough Tuning")
+
+
+
+
+# if __name__ == "__main__":
+#     find_screws()
+#     # test_coloured_dots("green")
+
 
 if __name__ == "__main__":
-    find_screws()
-    # test_coloured_dots("green")
+
+    model = YOLO("screw_finding/final_final.pt")
+
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        raise Exception("Camera not opened")
+
+    tune_hough(cap, model)
+
+    cap.release()
+    cv2.destroyAllWindows()
