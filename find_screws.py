@@ -36,9 +36,9 @@ HSV_COLOURS = {
 }
 
 DOTS_MM = {
-    "purple": (0, 60.4),
-    "blue": (0, 12),
-    "orange": (68, 10.3)
+    "purple": (0.9, 58.3),
+    "blue": (1.3, 11.8),
+    "orange": (68.7, 11.1)
 }
 
 
@@ -166,7 +166,8 @@ def calculate_distance(center_x, center_y):
 
 
 def find_coloured_dot(frame, lo, hi):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    blurred = cv2.GaussianBlur(frame, (7,7), 0)
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, np.array(lo), np.array(hi))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -180,34 +181,34 @@ def find_coloured_dot(frame, lo, hi):
 
 
 
-# def test_coloured_dots(colour):
-#     cap = cv2.VideoCapture(0)
-#     if not cap.isOpened():
-#         raise SystemExit("Camera not opened")
+def test_coloured_dots(colour):
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise SystemExit("Camera not opened")
     
-#     lo, hi = HSV_COLOURS[colour]
-#     while True:
-#         ok, frame = cap.read()
-#         if not ok:
-#             break
+    lo, hi = HSV_COLOURS[colour]
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+           break
     
-#         p = find_coloured_dot(frame, lo, hi)
-#         if p is None:
-#             cv2.putText(frame, f"{colour}: NOT FOUND", (10, 30),
-#                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-#         else:
-#             cx, cy = int(p[0]), int(p[1])
-#             cv2.circle(frame, (cx, cy), 12, (0, 255, 0), 2)
-#             cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
-#             cv2.putText(frame, f"{colour}: ({p[0]:.1f}, {p[1]:.1f})", (10, 30),
-#                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        p = find_coloured_dot(frame, lo, hi)
+        if p is None:
+            cv2.putText(frame, f"{colour}: NOT FOUND", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        else:
+            cx, cy = int(p[0]), int(p[1])
+            cv2.circle(frame, (cx, cy), 12, (0, 255, 0), 2)
+            cv2.circle(frame, (cx, cy), 2, (0, 255, 0), -1)
+            cv2.putText(frame, f"{colour}: ({p[0]:.1f}, {p[1]:.1f})", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     
-#         cv2.imshow("detection", frame)
-#         if cv2.waitKey(1) & 0xFF == ord("q"):
-#             break
+        cv2.imshow("detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+           break
     
-#     cap.release()
-#     cv2.destroyAllWindows()
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def get_affine(frame):
@@ -287,6 +288,7 @@ def calibrate(cap, n=10):
 
         # Display the camera frame
         cv2.imshow("Calibration Dots", frame)
+        cv2.imwrite("calibration_dots.jpg", frame)
         cv2.waitKey(100)
 
     cv2.destroyWindow("Calibration Dots")
@@ -408,6 +410,7 @@ def photo_capture2(zoom_scale, cap, model, class_names):
 
                 # Draw refined centre in blue
                 cv2.circle(frame, (int(refined_cx), int(refined_cy)), 5, (255, 0, 0), -1)
+                cv2.imwrite("saved_image.jpg", frame)
 
 
             # print("found center: (x = ", center_x, "y = ", center_y, ")")
@@ -584,11 +587,20 @@ def refine_screw_center(frame, box):
     if best_distance > 0.35 * max(width, height):
         return bbox_cx, bbox_cy
 
+    # with Hough circles
+    
     return (
         float(best_circle[0]),
         float(best_circle[1])
     )
-
+    
+    """
+    # without Hough circles
+    return (
+        float(bbox_cx),
+        float(bbox_cy)
+    )
+    """
 
 
 def tune_hough(cap, model):
@@ -670,6 +682,8 @@ def tune_hough(cap, model):
             minRadius=min_radius,
             maxRadius=max_radius
         )
+        if circles is None:
+            print("no circles:(")
 
         # Draw results
         display = crop.copy()
@@ -718,21 +732,21 @@ def tune_hough(cap, model):
 
 
 
-# if __name__ == "__main__":
-#     find_screws()
-#     # test_coloured_dots("green")
-
-
 if __name__ == "__main__":
+    find_screws()
+    #test_coloured_dots("blue")
 
-    model = YOLO("screw_finding/final_final.pt")
 
-    cap = cv2.VideoCapture(0)
+# # if __name__ == "__main__":
 
-    if not cap.isOpened():
-        raise Exception("Camera not opened")
+# #     model = YOLO("screw_finding/final_final.pt")
 
-    tune_hough(cap, model)
+# #     cap = cv2.VideoCapture(0)
 
-    cap.release()
-    cv2.destroyAllWindows()
+# #     if not cap.isOpened():
+# #         raise Exception("Camera not opened")
+
+# #     tune_hough(cap, model)
+
+# #     cap.release()
+# #     cv2.destroyAllWindows()
