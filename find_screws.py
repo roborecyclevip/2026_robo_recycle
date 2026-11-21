@@ -73,7 +73,7 @@ def photo_capture(zoom_scale, cap, model, class_names):
     num_boxes = 0
     screw_centers = []
     
-    while num_boxes < TOTAL_SCREWS:
+    while num_boxes < TOTAL_SCREWS - 1:
         screw_centers = []
         ret, frame = cap.read()
         if not ret:
@@ -237,7 +237,7 @@ def calibrate(cap, n=10):
 
     for name in HSV_COLOURS:
         avg_position = np.median(positions[name], axis=0)
-        print(name, avg_position);
+        print(name, avg_position)
         src.append(avg_position)
         dst.append(DOTS_MM[name])
 
