@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import math
 import os
 import numpy as np
+from itertools import permutations
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
@@ -17,6 +18,16 @@ Y_ORIGIN = 56 #130 5
 # ratio of mm per px
 # used to convert to real world coordinates
 RATIO = 0.355871886121
+
+# Number of frames to collect
+NUM_FRAMES = 15
+
+# Maximum number of frames we'll attempt to capture - including failures
+MAX_ATTEMPTS = 50
+
+# Maximum allowed distance between a screw's
+# reference position and its detected position (pixels)
+MAX_MATCH_DISTANCE = 30
 
 HSV_COLOURS = {
     "purple":  [[130, 50, 50],  [160, 255, 255]],
@@ -47,7 +58,7 @@ def find_screws():
     class_names = model.names
     
     screw_coordinates = []
-    screw_coordinates.extend(photo_capture(zoom_scale, cap, model, class_names))
+    screw_coordinates.extend(photo_capture2(zoom_scale, cap, model, class_names))
     final_coords = [("x_coord", "y_coord")]
 
     for screw in screw_coordinates:
@@ -107,9 +118,22 @@ def photo_capture(zoom_scale, cap, model, class_names):
                 x1, y1, x2, y2 = map(int, box)
                 label = f"{class_names[int(class_id)]}: {conf:.2f}"
             # print(f"Coordinates: {x1}, {y1}, {x2}, {y2}")
-                (center_x, center_y) = find_center(x1, x2, y1, y2)
+                # (center_x, center_y) = find_center(x1, x2, y1, y2)
+                # Original YOLO centre
+                bbox_cx, bbox_cy = find_center(x1, x2, y1, y2)
+
+                # Refined OpenCV centre
+                refined_cx, refined_cy = refine_screw_center(frame,(x1, y1, x2, y2))
+
+                # Draw original centre in red
+                cv2.circle(frame, (int(bbox_cx), int(bbox_cy)), 5, (0, 0, 255), -1)
+
+                # Draw refined centre in blue
+                cv2.circle(frame, (int(refined_cx), int(refined_cy)), 5, (255, 0, 0), -1)
+
+
             # print("found center: (x = ", center_x, "y = ", center_y, ")")
-                screw_centers.append((center_x, center_y))
+                screw_centers.append((refined_cx, refined_cy))
 
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2) # Green rectangle
@@ -125,8 +149,8 @@ def photo_capture(zoom_scale, cap, model, class_names):
 
 
 def find_center(x1, x2, y1, y2):
-    center_x = math.ceil((x1 + x2) / 2)
-    center_y = math.ceil((y1 + y2) / 2)
+    center_x = math.ceil((x1 + x2) / 2.0)
+    center_y = math.ceil((y1 + y2) / 2.0)
 
     return (center_x, center_y)
 
@@ -244,6 +268,285 @@ def calibrate(cap, n=10):
     return cv2.getAffineTransform(
         np.float32(src),
         np.float32(dst)
+    )
+
+def match_screws(reference, current):
+    """
+    Match screw detections in the current frame
+    to the reference frame.
+
+    Returns detections in the same order as reference.
+    """
+
+    if len(reference) != TOTAL_SCREWS:
+        return None
+
+    if len(current) != TOTAL_SCREWS:
+        return None
+
+    best_permutation = None
+    best_cost = float("inf")
+
+    # Try every possible ordering of the six detections
+    for perm in permutations(range(TOTAL_SCREWS)):
+
+        distances = []
+
+        for i in range(TOTAL_SCREWS):
+            ref_x, ref_y = reference[i]
+            curr_x, curr_y = current[perm[i]]
+
+            distance = math.sqrt(
+                (ref_x - curr_x) ** 2 +
+                (ref_y - curr_y) ** 2
+            )
+
+            distances.append(distance)
+
+        cost = sum(distances)
+
+        if cost < best_cost:
+            best_cost = cost
+            best_permutation = perm
+            best_distances = distances
+
+    # Reject frames where a detection is too far
+    if max(best_distances) > MAX_MATCH_DISTANCE:
+        return None
+
+    # Return detections in reference order
+    return [
+        current[i] for i in best_permutation
+    ]
+
+def photo_capture2(zoom_scale, cap, model, class_names):
+    # Stores the detections from each accepted frame.
+    # Each frame contains six screw centres.
+    all_frames = []
+
+    reference = None
+
+    attempts = 0
+
+    while len(all_frames) < NUM_FRAMES and attempts < MAX_ATTEMPTS:
+
+        attempts += 1
+
+        ret, frame = cap.read()
+
+        if not ret:
+            print("Error reading frame.")
+            continue
+
+        # Run YOLO inference
+        results = model(frame, conf=0.5, verbose=False)
+
+        current_centres = []
+        current_boxes = []
+
+        for r in results:
+
+            boxes = r.boxes.xyxy.cpu().numpy()
+            class_ids = r.boxes.cls.cpu().numpy()
+
+            for box, class_id in zip(boxes, class_ids):
+
+                # If you have multiple classes, filter here.
+                # For a single-class model, this is unnecessary.
+
+                x1, y1, x2, y2 = map(int, box)
+
+                # First calculate the approximate centre
+                # using the bounding box.
+                bbox_cx, bbox_cy = find_center(x1, x2, y1, y2)
+                
+                # Refined OpenCV centre
+                refined_cx, refined_cy = refine_screw_center(frame,(x1, y1, x2, y2))
+
+                # Draw original centre in red
+                cv2.circle(frame, (int(bbox_cx), int(bbox_cy)), 5, (0, 0, 255), -1)
+
+                # Draw refined centre in blue
+                cv2.circle(frame, (int(refined_cx), int(refined_cy)), 5, (255, 0, 0), -1)
+
+
+            # print("found center: (x = ", center_x, "y = ", center_y, ")")
+                current_centres.append((refined_cx, refined_cy))
+
+                current_boxes.append((x1, y1, x2, y2))
+
+        # Only accept frames with exactly six detections
+        if len(current_centres) != TOTAL_SCREWS:
+            print(
+                f"Rejected frame: found {len(current_centres)} screws"
+            )
+            continue
+
+        # First valid frame becomes our reference
+        if reference is None:
+
+            reference = current_centres.copy()
+
+            matched_centres = current_centres
+
+        else:
+
+            # Match screws to their reference positions
+            matched_centres = match_screws(
+                reference,
+                current_centres
+            )
+
+            if matched_centres is None:
+                print("Rejected frame: screw matching failed")
+                continue
+
+        # Store the matched coordinates
+        all_frames.append(matched_centres)
+
+        print(
+            f"Accepted frame {len(all_frames)}/{NUM_FRAMES}"
+        )
+
+        # Display detections
+        for (x1, y1, x2, y2), (cx, cy) in zip(
+            current_boxes, current_centres
+        ):
+
+            cv2.rectangle(
+                frame,
+                (x1, y1),
+                (x2, y2),
+                (0, 255, 0),
+                2
+            )
+
+            cv2.circle(
+                frame,
+                (int(cx), int(cy)),
+                4,
+                (0, 0, 255),
+                -1
+            )
+
+        cv2.imshow("YOLOv8 Object Detection", frame)
+        cv2.waitKey(1)
+
+    if len(all_frames) < NUM_FRAMES:
+        raise RuntimeError(
+            f"Only collected {len(all_frames)} valid frames "
+            f"out of {NUM_FRAMES} required."
+        )
+
+    # Convert to numpy array:
+    # Shape = (NUM_FRAMES, TOTAL_SCREWS, 2)
+    all_frames = np.array(all_frames)
+
+    # Calculate median position for each screw
+    median_centres = np.median(all_frames, axis=0)
+
+    print("\nFinal averaged screw centres:")
+
+    for i, (x, y) in enumerate(median_centres):
+        print(f"Screw {i + 1}: ({x:.2f}, {y:.2f})")
+
+    return [
+        (float(x), float(y))
+        for x, y in median_centres
+    ]
+
+
+
+def refine_screw_center(frame, box):
+
+    x1, y1, x2, y2 = box
+
+    # Calculate bounding box dimensions
+    width = x2 - x1
+    height = y2 - y1
+
+    # Original YOLO bounding box centre
+    bbox_cx = (x1 + x2) / 2.0
+    bbox_cy = (y1 + y2) / 2.0
+
+    # Add some padding around the bounding box
+    # This helps capture the entire screw head
+    padding = int(0.2 * max(width, height))
+
+    img_h, img_w = frame.shape[:2]
+
+    crop_x1 = max(0, x1 - padding)
+    crop_y1 = max(0, y1 - padding)
+
+    crop_x2 = min(img_w, x2 + padding)
+    crop_y2 = min(img_h, y2 + padding)
+
+    # Crop the screw region
+    crop = frame[crop_y1:crop_y2, crop_x1:crop_x2]
+
+    if crop.size == 0:
+        return bbox_cx, bbox_cy
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+
+    # Reduce noise
+    blurred = cv2.GaussianBlur(
+        gray,
+        (5, 5),
+        1.5
+    )
+
+    # Estimate screw radius from bounding box dimensions
+    min_dim = min(width, height)
+
+    min_radius = max(2, int(min_dim * 0.2))
+    max_radius = max(min_radius + 1, int(min_dim * 0.65))
+
+    # Detect circles
+    circles = cv2.HoughCircles(
+        blurred,
+        cv2.HOUGH_GRADIENT,
+        dp=1.2,
+        minDist=max(8, min_dim // 2),
+        param1=100,
+        param2=25,
+        minRadius=min_radius,
+        maxRadius=max_radius
+    )
+
+    # If no circles are found, fall back to YOLO centre
+    if circles is None:
+        return bbox_cx, bbox_cy
+
+    circles = np.round(circles[0]).astype(int)
+
+    # Find the circle closest to the YOLO bounding box centre
+    best_circle = None
+    best_distance = float("inf")
+
+    for cx, cy, radius in circles:
+
+        # Convert crop coordinates back to full-frame coordinates
+        global_x = cx + crop_x1
+        global_y = cy + crop_y1
+
+        distance = math.sqrt(
+            (global_x - bbox_cx) ** 2 +
+            (global_y - bbox_cy) ** 2
+        )
+
+        if distance < best_distance:
+            best_distance = distance
+            best_circle = (global_x, global_y)
+
+    # Reject circles that are too far from the YOLO detection
+    if best_distance > 0.35 * max(width, height):
+        return bbox_cx, bbox_cy
+
+    return (
+        float(best_circle[0]),
+        float(best_circle[1])
     )
 
 
