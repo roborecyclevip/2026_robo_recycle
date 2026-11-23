@@ -320,21 +320,23 @@ def match_screws(reference, current):
     Returns detections in the same order as reference.
     """
 
-    if len(reference) != TOTAL_SCREWS:
-        return None
+    num_screws = len(reference)
 
-    if len(current) != TOTAL_SCREWS:
+    # if len(reference) != TOTAL_SCREWS:
+    #     return None
+
+    if len(current) != num_screws:
         return None
 
     best_permutation = None
     best_cost = float("inf")
 
     # Try every possible ordering of the six detections
-    for perm in permutations(range(TOTAL_SCREWS)):
+    for perm in permutations(range(num_screws)):
 
         distances = []
 
-        for i in range(TOTAL_SCREWS):
+        for i in range(num_screws):
             ref_x, ref_y = reference[i]
             curr_x, curr_y = current[perm[i]]
 
@@ -369,6 +371,8 @@ def photo_capture2(zoom_scale, cap, model, class_names):
     reference = None
 
     attempts = 0
+
+    best_count = 0
 
     while len(all_frames) < NUM_FRAMES and attempts < MAX_ATTEMPTS:
 
@@ -418,23 +422,20 @@ def photo_capture2(zoom_scale, cap, model, class_names):
 
                 current_boxes.append((x1, y1, x2, y2))
 
-        # Only accept frames with exactly six detections
-        if len(current_centres) != TOTAL_SCREWS:
-            print(
-                f"Rejected frame: found {len(current_centres)} screws"
-            )
+
+        num_detected = len(current_centres)
+        if num_detected == 0:
             continue
 
-        # First valid frame becomes our reference
-        if reference is None:
-
+        if num_detected > best_count:
+            best_count = num_detected
+            all_frames = []
             reference = current_centres.copy()
 
             matched_centres = current_centres
-
+        elif num_detected < best_count:
+            continue
         else:
-
-            # Match screws to their reference positions
             matched_centres = match_screws(
                 reference,
                 current_centres
@@ -444,12 +445,46 @@ def photo_capture2(zoom_scale, cap, model, class_names):
                 print("Rejected frame: screw matching failed")
                 continue
 
-        # Store the matched coordinates
-        all_frames.append(matched_centres)
 
+        all_frames.append(matched_centres)
         print(
-            f"Accepted frame {len(all_frames)}/{NUM_FRAMES}"
+            f"Accepted frame {len(all_frames)}/{NUM_FRAMES} "
+            f"({best_count} screws detected)"
         )
+
+
+        # # Only accept frames with exactly six detections
+        # if len(current_centres) != TOTAL_SCREWS:
+        #     print(
+        #         f"Rejected frame: found {len(current_centres)} screws"
+        #     )
+        #     continue
+
+        # # First valid frame becomes our reference
+        # if reference is None:
+
+        #     reference = current_centres.copy()
+
+        #     matched_centres = current_centres
+
+        # else:
+
+        #     # Match screws to their reference positions
+        #     matched_centres = match_screws(
+        #         reference,
+        #         current_centres
+        #     )
+
+        #     if matched_centres is None:
+        #         print("Rejected frame: screw matching failed")
+        #         continue
+
+        # # Store the matched coordinates
+        # all_frames.append(matched_centres)
+
+        # print(
+        #     f"Accepted frame {len(all_frames)}/{NUM_FRAMES}"
+        # )
 
         # Display detections
         for (x1, y1, x2, y2), (cx, cy) in zip(
@@ -475,11 +510,17 @@ def photo_capture2(zoom_scale, cap, model, class_names):
         cv2.imshow("YOLOv8 Object Detection", frame)
         cv2.waitKey(1)
 
-    if len(all_frames) < NUM_FRAMES:
-        raise RuntimeError(
-            f"Only collected {len(all_frames)} valid frames "
-            f"out of {NUM_FRAMES} required."
-        )
+    if len(all_frames) == 0:
+        raise RuntimeError("No screws were detected!")
+
+    print(f"\nHighest number of screws detected: {best_count}")
+    print(f"Number of frames collected: {len(all_frames)}")
+
+    # if len(all_frames) < NUM_FRAMES:
+    #     raise RuntimeError(
+    #         f"Only collected {len(all_frames)} valid frames "
+    #         f"out of {NUM_FRAMES} required."
+    #     )
 
     # Convert to numpy array:
     # Shape = (NUM_FRAMES, TOTAL_SCREWS, 2)
