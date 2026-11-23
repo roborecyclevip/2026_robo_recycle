@@ -23,7 +23,7 @@ FINE_ALIGNMENT_Z = 205.0
 TARGET_Z = 207.0
 # Do not enable preload until independent safe travel limits are verified.
 PRELOAD_MM = 0.0
-ENGAGEMENT_SPEED = -180
+ENGAGEMENT_SPEED = 180
 ENGAGEMENT_FINISH_MS = 3000
 
 # Start with a slow turn, then speed up for the remaining turns.
