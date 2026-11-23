@@ -6,9 +6,9 @@ from unscrew_v2_helper import (
     brake_drill,
     connect_arduino,
     drop_screw_at_magnet,
-    detect_screw_engagement,
     home,
     move_to,
+    run_engagement_check,
     read_screw_coordinates,
     rotate_drill,
 )
@@ -21,10 +21,6 @@ SAFE_Z = 190.0
 ALIGNMENT_Z = 200.0  # Hover above the HDD while aligning the tool.
 FINE_ALIGNMENT_Z = 205.0
 TARGET_Z = 207.0
-# Do not enable preload until independent safe travel limits are verified.
-PRELOAD_MM = 0.0
-ENGAGEMENT_SPEED = 180
-ENGAGEMENT_FINISH_MS = 3000
 
 # Start with a slow turn, then speed up for the remaining turns.
 TURN_SPEEDS = (20, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50)
@@ -45,26 +41,23 @@ def unscrew(connection, x, y):
     print(f"Fine alignment at Z{FINE_ALIGNMENT_Z:g}. Finish when the bit is lined up.")
     x, y = align_tool(connection, x, y, FINE_ALIGNMENT_Z)
 
-    print("Starting automatic current/RPM engagement detection...")
-    result, detected_z = detect_screw_engagement(
-        connection, x, y, TARGET_Z,
-        speed=ENGAGEMENT_SPEED,
-        finish_ms=ENGAGEMENT_FINISH_MS,
-    )
-    if result != "DETECTED":
-        print(f"Engagement unsuccessful: {result}. No further motion commanded.")
-        raise RuntimeError(f"Engagement failed: {result}; operator recovery required")
+    # Measure free spin above the HDD. The Arduino brakes before it replies.
+    move_to(connection, x, y, SAFE_Z)
+    baseline = run_engagement_check(connection, "PROBE_BASELINE", "PROBE_BASELINE:")
+    if baseline != "READY":
+        raise RuntimeError(f"Free-spin check stopped: {baseline}. Inspect before continuing.")
 
-    print(f"Engagement signal detected at Z={detected_z:.3f} mm")
-    answer = input("Confirm bit seated: Enter to unscrew, S to stop: ").strip().upper()
-    if answer:
-        raise RuntimeError("Operator stopped after detection; inspect before moving")
+    # Lower with the drill stopped, then probe with XYZ stationary. The mount's
+    # compliance accommodates small differences in screw height.
+    start_z = TARGET_Z
+    move_to(connection, x, y, start_z)
+    result = run_engagement_check(connection, "PROBE_SCREW", "PROBE_RESULT:")
+    if result != "POSSIBLE_ENGAGEMENT":
+        raise RuntimeError(f"Screw check stopped: {result}. Inspect before continuing.")
 
-    start_z = detected_z + PRELOAD_MM
-    if start_z > TARGET_Z + 0.001:
-        raise RuntimeError("Preload exceeds engagement search limit")
-    if PRELOAD_MM:
-        move_to(connection, x, y, start_z)
+    answer = input("Possible engagement. Type YES if the bit is seated and ready to unscrew: ")
+    if answer.strip().upper() != "YES":
+        raise RuntimeError("Operator did not confirm engagement. Inspect before continuing.")
 
     # Let the compliance take up each turn, then raise by the thread's rise.
     z = start_z
@@ -73,7 +66,7 @@ def unscrew(connection, x, y):
         z -= THREAD_RISE_PER_TURN_MM
         move_to(connection, x, y, z)
 
-    # Complete the 5 mm climb from the preloaded position before retracting.
+    # Complete the climb from the probe position before retracting.
     brake_drill(connection)
     move_to(connection, x, y, start_z - TOTAL_CLIMB_MM)
     drop_screw_at_magnet(connection, x, y, SAFE_Z)

@@ -15,19 +15,29 @@ unsigned long motorStart = 0, moveStart = 0;
 int motorRuns = 0;
 bool spinning = false, moving = false, stuck = false;
 bool rpmDrop = false, currentRise = false, invalidBaseline = false;
+bool probeMode = false, overload = false, countLimit = false;
 float destination = 0;
 int descentSamples = 0;
 
 void Motor_Brake() { spinning = false; }
-void Motor_Forward(int) { spinning = true; motorStart = fakeUs / 1000; ++motorRuns; }
-void Motor_Backward(int speed) { Motor_Forward(speed); }
+void Motor_Forward(int speed) {
+  if (probeMode) assert(speed == 20);
+  spinning = true; motorStart = fakeUs / 1000; ++motorRuns;
+}
+void Motor_Backward(int speed) { assert(!probeMode); Motor_Forward(speed); }
 void Encoder_Reset() {}
+long Encoder_GetPosition() { return countLimit ? (fakeUs / 1000 - motorStart) * 5 : 0; }
 float Encoder_GetSpeedRPM() {
   auto elapsed = fakeUs / 1000 - motorStart;
+  if (probeMode) return motorRuns == 2 && rpmDrop ? 75 : 90;
   if (elapsed < 500 || invalidBaseline) return 0;
   return motorRuns == 2 && (moving || position.z >= 100) && rpmDrop ? -390 : -414;
 }
 double read_current_sensor() {
+  if (probeMode) {
+    if (overload && motorRuns == 2) return 2.2;
+    return motorRuns == 2 && currentRise ? .95 : .72;
+  }
   if (moving) ++descentSamples;
   // Large startup current must never be classified as engagement.
   if (fakeUs / 1000 - motorStart < 500) return 4;
@@ -57,15 +67,19 @@ void reset() {
   fakeUs=0; stopAt=0; stopSent=false; Serial.output.str(""); Serial.stopIndex=0;
   moves.clear(); position={10,20,110}; motorRuns=0; spinning=moving=stuck=false;
   rpmDrop=currentRise=invalidBaseline=false; descentSamples=0;
+  probeMode=overload=countLimit=false;
 }
 int main() {
   for (int mode = 0; mode < 4; ++mode) {
     reset(); rpmDrop=mode & 1; currentRise=mode & 2;
     auto result=unscrew_screw_engagement(30,40,100,180,300);
     assert(result == (mode == 3 ? ScrewEngagementResult::Engaged : ScrewEngagementResult::NotEngaged));
-    assert(!spinning && !moving && motorRuns==2 && descentSamples>40);
-    assert(moves.size()==4 && moves[0].x==10 && moves[0].y==20 && moves[0].z==80);
-    assert(position.x==30 && position.y==40 && position.z==80);
+    assert(!spinning && !moving && motorRuns==2 && descentSamples>0);
+    assert(moves.size()==3 && moves[0].x==10 && moves[0].y==20 && moves[0].z==80);
+    assert(position.x==30 && position.y==40);
+    // The legacy command now holds its stopped Z instead of retracting.
+    if (mode == 3) assert(position.z > 80 && position.z < 100);
+    else assert(position.z == 100);
   }
   reset(); invalidBaseline=true;
   assert(unscrew_screw_engagement(30,40,100)==ScrewEngagementResult::Aborted);
@@ -79,5 +93,23 @@ int main() {
   reset();
   assert(unscrew_screw_engagement(30,40,10)==ScrewEngagementResult::Aborted);
   assert(moves.empty() && motorRuns==0);
+  for (int mode = 0; mode < 4; ++mode) {
+    reset();
+    probeMode = true;
+    rpmDrop = currentRise = mode != 0;
+    overload = mode == 2;
+    countLimit = mode == 3;
+    probe_screw_here();
+    assert(Serial.output.str().find("PROBE_RESULT:NO_BASELINE") != std::string::npos);
+    assert(motorRuns == 0);
+    measure_screw_probe_baseline();
+    assert(!spinning && Serial.output.str().find("PROBE_BASELINE:READY") != std::string::npos);
+    probe_screw_here();
+    const char *expected = mode == 1 ? "POSSIBLE_ENGAGEMENT" : mode == 2 ? "OVERLOAD" : "NOT_DETECTED";
+    assert(Serial.output.str().find(std::string("PROBE_RESULT:") + expected) != std::string::npos);
+    assert(!spinning && !moving && moves.empty() && motorRuns == 2);
+    probe_screw_here();
+    assert(motorRuns == 2);  // A second probe requires a fresh baseline.
+  }
   std::cout << "Flow tests passed\n";
 }

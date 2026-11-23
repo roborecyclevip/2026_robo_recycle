@@ -5,6 +5,7 @@
 #include "Encoder.h"
 #include "Current.h"
 #include <string.h>
+#include <stdlib.h>
 
 namespace {
 constexpr float CLEARANCE_MM = 20.0f;
@@ -12,6 +13,15 @@ constexpr unsigned long SAMPLE_MS = 20;
 constexpr unsigned long SPINUP_MS = 1000;
 constexpr unsigned long BASELINE_MS = 1000;
 constexpr unsigned long DESCENT_TIMEOUT_MS = 10000;
+
+// Trial settings for the stationary probe. Recheck with the actual bit and drive.
+constexpr int PROBE_PWM = 20;  // Motor_Forward is the verified unscrew direction.
+constexpr unsigned long PROBE_WARMUP_MS = 500;
+constexpr unsigned long PROBE_TIMEOUT_MS = 600;
+constexpr long PROBE_MAX_COUNTS = 225;  // Encoder counts, independent of DRILL calibration.
+constexpr float PROBE_CURRENT_LIMIT_A = 2.0f;
+constexpr float PROBE_EXTRA_CURRENT_LIMIT_A = 0.5f;
+EngagementBaseline probeBaseline;
 
 // Local command reader: the usual serialEvent() cannot run inside this routine.
 // Only BRAKE is accepted here; other input is discarded, never queued for later.
@@ -86,6 +96,84 @@ ScrewEngagementResult abortEngagement() {
   return ScrewEngagementResult::Aborted;
 }
 } // namespace
+
+void measure_screw_probe_baseline() {
+  probeBaseline = EngagementBaseline();
+  EngagementCurrentAverage average;
+  Encoder_Reset();
+  Motor_Forward(PROBE_PWM);
+  const unsigned long start = millis();
+  for (unsigned long elapsed = 0; elapsed < PROBE_WARMUP_MS + BASELINE_MS;
+       elapsed = millis() - start) {
+    const float current = fabsf(read_current_sensor());
+    if (current >= PROBE_CURRENT_LIMIT_A) {
+      Motor_Brake();
+      probeBaseline = EngagementBaseline();
+      Serial.println(F("PROBE_BASELINE:OVERLOAD"));
+      return;
+    }
+    const float rpm = Encoder_GetSpeedRPM();
+    const float smoothed = average.add(current);
+    if (elapsed >= PROBE_WARMUP_MS) probeBaseline.add(rpm, smoothed);
+    delay(SAMPLE_MS);
+  }
+  Motor_Brake();
+  Serial.print(F("Probe baseline RPM: "));
+  Serial.println(probeBaseline.rpm(), 2);
+  Serial.print(F("Probe baseline current A: "));
+  Serial.println(probeBaseline.current(), 3);
+  if (probeBaseline.valid()) Serial.println(F("PROBE_BASELINE:READY"));
+  else Serial.println(F("PROBE_BASELINE:UNSTABLE"));
+}
+
+void probe_screw_here() {
+  const EngagementBaseline baseline = probeBaseline;
+  probeBaseline = EngagementBaseline();  // Each probe consumes one baseline.
+  if (!baseline.valid()) {
+    Serial.println(F("PROBE_RESULT:NO_BASELINE"));
+    return;
+  }
+
+  EngagementDetector detector(baseline.rpm(), baseline.current());
+  EngagementCurrentAverage average;
+  const char *result = "PROBE_RESULT:NOT_DETECTED";
+  Encoder_Reset();
+  Motor_Forward(PROBE_PWM);
+  const unsigned long start = millis();
+  unsigned long lastSample = start - SAMPLE_MS;
+  float peakCurrent = 0;
+  while (millis() - start < PROBE_TIMEOUT_MS &&
+         labs(Encoder_GetPosition()) < PROBE_MAX_COUNTS) {
+    const float current = fabsf(read_current_sensor());
+    if (current > peakCurrent) peakCurrent = current;
+    if (current >= PROBE_CURRENT_LIMIT_A) {
+      result = "PROBE_RESULT:OVERLOAD";
+      break;
+    }
+    const unsigned long now = millis();
+    if (now - lastSample < SAMPLE_MS) continue;
+    lastSample = now;
+    const float rpm = Encoder_GetSpeedRPM();
+    // Ignore initial surge for engagement and relative-current comparisons only.
+    // The absolute-current cutoff is active from the start.
+    if (now - start < 100) continue;
+    const float smoothed = average.add(current);
+    if (smoothed >= baseline.current() + PROBE_EXTRA_CURRENT_LIMIT_A) {
+      result = "PROBE_RESULT:OVERLOAD";
+      break;
+    }
+    if (detector.update(now, rpm, smoothed)) {
+      result = "PROBE_RESULT:POSSIBLE_ENGAGEMENT";
+      break;
+    }
+  }
+  Motor_Brake();
+  Serial.print(F("Probe peak current A: "));
+  Serial.println(peakCurrent, 3);
+  Serial.print(F("Probe encoder counts: "));
+  Serial.println(labs(Encoder_GetPosition()));
+  Serial.println(result);
+}
 
 ScrewEngagementResult unscrew_screw_engagement(float x, float y, float z,
                                              int speed, unsigned long finishMs) {

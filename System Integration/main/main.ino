@@ -125,6 +125,8 @@ void printHelp() {
   Serial.println(F("DRILL deg [spd]     → Rotate drill (spd=0-255)"));
   Serial.println(F("UNSCREW X Y         → Manual-assisted screw flow at X,Y"));
   Serial.println(F("UNSCREW_ENGAGE X Y Z [spd] [ms] → Test sensor-based engagement"));
+  Serial.println(F("PROBE_BASELINE      → Measure free spin at clearance (drill only)"));
+  Serial.println(F("PROBE_SCREW         → Check for load at current XYZ (drill only)"));
   Serial.println(F("UNSCREWCHAIN n ...  → Run screw flow for coordinate list"));
   Serial.println(F("Alignment prompts   → FORWARD/BACKWARD/LEFT/RIGHT/DONE"));
   Serial.println(F("LOGDRILL ms spd [dt]→ Log RPM/current while drill spins"));
@@ -307,6 +309,15 @@ void processCommand(String cmd) {
     Serial.println(F("Homing all steppers..."));
     Stepper_HomeAll();
     Serial.println(F("Homed."));
+    return;
+  }
+
+  if (cmd == "PROBE_BASELINE") {
+    measure_screw_probe_baseline();
+    return;
+  }
+  if (cmd == "PROBE_SCREW") {
+    probe_screw_here();
     return;
   }
 
