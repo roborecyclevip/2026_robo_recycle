@@ -7,7 +7,7 @@ from itertools import permutations
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 4
+TOTAL_SCREWS = 5
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
@@ -42,9 +42,9 @@ DOTS_MM = {
 }
 
 DOT_RANGES = {
-    "purple":    (30, 100, 150, 200),
-    "blue":  (30, 100, 10, 70),
-    "orange":   (230, 280, 10, 70),
+    "purple":    (10, 100, 150, 230),
+    "blue":  (10, 100, 10, 100),
+    "orange":   (210, 280, 10, 100),
 }
 
 
@@ -581,11 +581,11 @@ def refine_screw_center(frame, box):
     # Detect circles
     circles = cv2.HoughCircles(
         blurred,
-        cv2.HOUGH_GRADIENT,
-        dp=1.2,
+        cv2.HOUGH_GRADIENT_ALT,
+        dp=1,
         minDist=max(8, min_dim // 2),
-        param1=100,
-        param2=25,
+        param1=70,
+        param2=0.7,
         minRadius=min_radius,
         maxRadius=max_radius
     )
