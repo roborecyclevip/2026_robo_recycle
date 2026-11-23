@@ -73,7 +73,7 @@ def read_screw_coordinates(use_camera):
     with COORDINATES_CSV.open(newline="", encoding="utf-8-sig") as file:
         next(file, None)  # Skip the header.
         for x, y in csv.reader(file):
-            coordinates.append((float(x) + X_OFFSET, float(y) + Y_OFFSET))
+            coordinates.append((float(x), float(y)))
     return coordinates
 
 
