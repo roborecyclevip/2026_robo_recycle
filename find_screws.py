@@ -41,6 +41,12 @@ DOTS_MM = {
     "orange": (67.9, 8.1)
 }
 
+DOT_RANGES = {
+    "purple":    (30, 100, 150, 200),
+    "blue":  (30, 100, 10, 70),
+    "orange":   (230, 280, 10, 70),
+}
+
 
 def find_screws():
     model = YOLO("screw_finding/final_final.pt")
@@ -249,42 +255,21 @@ def calibrate(cap, n=10):
         for name, (lo, hi) in HSV_COLOURS.items():
             p = find_coloured_dot(frame, lo, hi)
 
-            if p is not None:
-                positions[name].append(p)
-
-                cx, cy = map(int, p)
-
-                # Draw a circle around the detected dot
-                cv2.circle(
-                    frame,
-                    (cx, cy),
-                    10,
-                    (0, 255, 0),
-                    2
-                )
-
-                # Draw a small centre point
-                cv2.circle(
-                    frame,
-                    (cx, cy),
-                    3,
-                    (0, 0, 255),
-                    -1
-                )
-
-                # Display the colour and coordinates
-                cv2.putText(
-                    frame,
-                    f"{name}: ({cx}, {cy})",
-                    (cx + 15, cy - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (255, 255, 255),
-                    2
-                )
-
-            else:
+            if p is None:
                 print(f"{name} not found!")
+                continue
+
+            if not in_range(name, p):
+                print(f"{name} rejected, out of range: ({p[0]:.0f}, {p[1]:.0f})")
+                continue
+
+            positions[name].append(p)
+
+            cx, cy = map(int, p)
+            cv2.circle(frame, (cx, cy), 10, (0, 255, 0), 2)
+            cv2.circle(frame, (cx, cy), 3, (0, 0, 255), -1)
+            cv2.putText(frame, f"{name}: ({cx}, {cy})", (cx + 15, cy - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Display the camera frame
         cv2.imshow("Calibration Dots", frame)
@@ -311,6 +296,12 @@ def calibrate(cap, n=10):
         np.float32(src),
         np.float32(dst)
     )
+
+def in_range(name, p):
+    x_min, x_max, y_min, y_max = DOT_RANGES[name]
+    x, y = p
+    return x_min <= x <= x_max and y_min <= y <= y_max
+
 
 def match_screws(reference, current):
     """
