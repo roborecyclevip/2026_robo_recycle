@@ -7,7 +7,7 @@ from itertools import permutations
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 6
+TOTAL_SCREWS = 4
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
@@ -43,8 +43,8 @@ DOTS_MM = {
 
 
 def find_screws():
-    #model = YOLO("screw_finding/final_final.pt")
-    model = YOLO("fake_hdd_model.pt")
+    model = YOLO("screw_finding/final_final.pt")
+    #model = YOLO("fake_hdd_model.pt")
     cap = cv2.VideoCapture(0)
     zoom_scale = 1.5
     if not cap.isOpened():
