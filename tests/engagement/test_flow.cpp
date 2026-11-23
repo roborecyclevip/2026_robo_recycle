@@ -29,7 +29,11 @@ void Encoder_Reset() {}
 long Encoder_GetPosition() { return countLimit ? (fakeUs / 1000 - motorStart) * 5 : 0; }
 float Encoder_GetSpeedRPM() {
   auto elapsed = fakeUs / 1000 - motorStart;
-  if (probeMode) return motorRuns == 2 && rpmDrop ? 75 : 90;
+  if (probeMode) {
+    // Simulate a startup fluctuation that lasts beyond the old 500 ms warm-up.
+    if (motorRuns == 1 && elapsed < 850) return 55;
+    return motorRuns == 2 && rpmDrop ? 75 : 90;
+  }
   if (elapsed < 500 || invalidBaseline) return 0;
   return motorRuns == 2 && (moving || position.z >= 100) && rpmDrop ? -390 : -414;
 }
@@ -103,6 +107,7 @@ int main() {
     assert(Serial.output.str().find("PROBE_RESULT:NO_BASELINE") != std::string::npos);
     assert(motorRuns == 0);
     measure_screw_probe_baseline();
+    assert(fakeUs / 1000 - motorStart >= 2000);
     assert(!spinning && Serial.output.str().find("PROBE_BASELINE:READY") != std::string::npos);
     probe_screw_here();
     const char *expected = mode == 1 ? "POSSIBLE_ENGAGEMENT" : mode == 2 ? "OVERLOAD" : "NOT_DETECTED";

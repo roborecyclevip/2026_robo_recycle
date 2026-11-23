@@ -16,7 +16,6 @@ constexpr unsigned long DESCENT_TIMEOUT_MS = 10000;
 
 // Trial settings for the stationary probe. Recheck with the actual bit and drive.
 constexpr int PROBE_PWM = 20;  // Motor_Forward is the verified unscrew direction.
-constexpr unsigned long PROBE_WARMUP_MS = 500;
 constexpr unsigned long PROBE_TIMEOUT_MS = 600;
 constexpr long PROBE_MAX_COUNTS = 225;  // Encoder counts, independent of DRILL calibration.
 constexpr float PROBE_CURRENT_LIMIT_A = 2.0f;
@@ -103,7 +102,9 @@ void measure_screw_probe_baseline() {
   Encoder_Reset();
   Motor_Forward(PROBE_PWM);
   const unsigned long start = millis();
-  for (unsigned long elapsed = 0; elapsed < PROBE_WARMUP_MS + BASELINE_MS;
+  // Match the original free-spin timing: warm up for one second, then
+  // collect one second of baseline readings while the drill keeps spinning.
+  for (unsigned long elapsed = 0; elapsed < SPINUP_MS + BASELINE_MS;
        elapsed = millis() - start) {
     const float current = fabsf(read_current_sensor());
     if (current >= PROBE_CURRENT_LIMIT_A) {
@@ -114,7 +115,7 @@ void measure_screw_probe_baseline() {
     }
     const float rpm = Encoder_GetSpeedRPM();
     const float smoothed = average.add(current);
-    if (elapsed >= PROBE_WARMUP_MS) probeBaseline.add(rpm, smoothed);
+    if (elapsed >= SPINUP_MS) probeBaseline.add(rpm, smoothed);
     delay(SAMPLE_MS);
   }
   Motor_Brake();
