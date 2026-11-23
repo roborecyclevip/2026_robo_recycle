@@ -7,7 +7,7 @@ from itertools import permutations
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 2
+TOTAL_SCREWS = 4
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
