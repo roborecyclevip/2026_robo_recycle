@@ -121,3 +121,47 @@ def drop_screw_at_magnet(connection, x, y, safe_z):
     move_to(connection, MAGNET_X, MAGNET_Y, MAGNET_Z)
     input("Press Enter when the screw is off the bit: ")
     move_to(connection, MAGNET_X, MAGNET_Y, safe_z)
+
+
+def detect_screw_engagement(connection, x, y, target_z, speed=-180, finish_ms=3000):
+    """Return (DETECTED, z), (NOT_DETECTED, None), or (ABORTED, None).
+
+    Uses the existing Arduino UNSCREW_ENGAGE protocol. On protocol errors or
+    timeouts, stop the program; physical emergency stop may be required.
+    """
+    import math
+    if not all(math.isfinite(v) for v in (x, y, target_z)):
+        raise ValueError("Engagement coordinates must be finite")
+    if not isinstance(speed, int) or not -255 <= speed <= 255 or speed == 0:
+        raise ValueError("Engagement speed must be signed PWM (-255..255), nonzero")
+    if not isinstance(finish_ms, int) or not 1 <= finish_ms <= 30000:
+        raise ValueError("finish_ms must be 1..30000")
+    command = f"UNSCREW_ENGAGE {x:.3f} {y:.3f} {target_z:.3f} {speed} {finish_ms}"
+    connection.write((command + "\n").encode())
+    print("Sent:", command)
+    detected_z = None
+    deadline = time.monotonic() + 45.0
+    while time.monotonic() < deadline:
+        reply = connection.readline().decode(errors="replace").strip()
+        if not reply:
+            continue
+        print("Arduino:", reply)
+        if reply.startswith("ENGAGEMENT_Z:"):
+            try:
+                detected_z = float(reply.split(":", 1)[1].strip())
+            except ValueError as exc:
+                raise RuntimeError("Invalid engagement Z") from exc
+            if not math.isfinite(detected_z):
+                raise RuntimeError("Nonfinite engagement Z")
+        elif reply.startswith("ENGAGEMENT_RESULT:"):
+            status = reply.split(":", 1)[1].strip()
+            if status == "DETECTED":
+                if detected_z is None:
+                    raise RuntimeError("DETECTED without engagement Z")
+                return status, detected_z
+            if status in ("NOT_DETECTED", "ABORTED"):
+                return status, None
+            raise RuntimeError(f"Unknown engagement status: {status}")
+        elif reply.startswith("Error: UNSCREW_ENGAGE"):
+            raise RuntimeError(reply)
+    raise TimeoutError("Engagement timeout: machine state unknown. Use physical emergency stop.")
