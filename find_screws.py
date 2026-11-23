@@ -36,9 +36,9 @@ HSV_COLOURS = {
 }
 
 DOTS_MM = {
-    "purple": (0.9, 58.3),
-    "blue": (1.3, 11.8),
-    "orange": (68.7, 11.1)
+    "purple": (0.4, 55.3),
+    "blue": (0.4, 8.9),
+    "orange": (67.9, 8.1)
 }
 
 

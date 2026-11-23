@@ -23,9 +23,9 @@ TARGET_Z = 207.0
 PRELOAD_MM = 1.0
 
 # Start with a slow turn, then speed up for the remaining turns.
-TURN_SPEEDS = (20, 50, 50)
-THREAD_RISE_PER_TURN_MM = 0.5
-TOTAL_CLIMB_MM = 5.0
+TURN_SPEEDS = (20, 50, 50, 50, 50)
+THREAD_RISE_PER_TURN_MM = 0.5 # 1 for M6, 0.5 for T8
+TOTAL_CLIMB_MM = 5 # 20 for M6, 7 for T8
 
 
 def unscrew(connection, x, y):
