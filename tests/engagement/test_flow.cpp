@@ -21,12 +21,12 @@ int descentSamples = 0;
 
 void Motor_Brake() { spinning = false; }
 void Motor_Forward(int speed) {
-  if (probeMode) assert(speed == 20);
+  if (probeMode) assert(speed == 180);
   spinning = true; motorStart = fakeUs / 1000; ++motorRuns;
 }
 void Motor_Backward(int speed) { assert(!probeMode); Motor_Forward(speed); }
 void Encoder_Reset() {}
-long Encoder_GetPosition() { return countLimit ? (fakeUs / 1000 - motorStart) * 5 : 0; }
+long Encoder_GetPosition() { return countLimit ? (fakeUs / 1000 - motorStart) * 500 : 0; }
 float Encoder_GetSpeedRPM() {
   auto elapsed = fakeUs / 1000 - motorStart;
   if (probeMode) {
@@ -112,6 +112,8 @@ int main() {
     probe_screw_here();
     const char *expected = mode == 1 ? "POSSIBLE_ENGAGEMENT" : mode == 2 ? "OVERLOAD" : "NOT_DETECTED";
     assert(Serial.output.str().find(std::string("PROBE_RESULT:") + expected) != std::string::npos);
+    if (mode == 0) assert(fakeUs / 1000 - motorStart >= 4000);
+    if (mode == 3) assert(fakeUs / 1000 - motorStart < 1000);  // Runaway-count failsafe.
     assert(!spinning && !moving && moves.empty() && motorRuns == 2);
     probe_screw_here();
     assert(motorRuns == 2);  // A second probe requires a fresh baseline.

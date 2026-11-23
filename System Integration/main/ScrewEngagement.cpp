@@ -14,10 +14,15 @@ constexpr unsigned long SPINUP_MS = 1000;
 constexpr unsigned long BASELINE_MS = 1000;
 constexpr unsigned long DESCENT_TIMEOUT_MS = 10000;
 
-// Trial settings for the stationary probe. Recheck with the actual bit and drive.
-constexpr int PROBE_PWM = 20;  // Motor_Forward is the verified unscrew direction.
-constexpr unsigned long PROBE_TIMEOUT_MS = 600;
-constexpr long PROBE_MAX_COUNTS = 225;  // Encoder counts, independent of DRILL calibration.
+// Match the original engagement trial, but use the verified positive direction.
+// The probe gets one second to reach steady speed, followed by up to three
+// seconds of sensing. The count limit is only a runaway failsafe; it must not
+// cut a normal high-speed probe short before enough current/RPM samples exist.
+constexpr int PROBE_PWM = 180;
+constexpr unsigned long PROBE_SPINUP_MS = 1000;
+constexpr unsigned long PROBE_SENSING_MS = 3000;
+constexpr unsigned long PROBE_TIMEOUT_MS = PROBE_SPINUP_MS + PROBE_SENSING_MS;
+constexpr long PROBE_MAX_COUNTS = 100000;
 constexpr float PROBE_CURRENT_LIMIT_A = 2.0f;
 constexpr float PROBE_EXTRA_CURRENT_LIMIT_A = 0.5f;
 EngagementBaseline probeBaseline;
@@ -155,10 +160,11 @@ void probe_screw_here() {
     if (now - lastSample < SAMPLE_MS) continue;
     lastSample = now;
     const float rpm = Encoder_GetSpeedRPM();
-    // Ignore initial surge for engagement and relative-current comparisons only.
-    // The absolute-current cutoff is active from the start.
-    if (now - start < 100) continue;
     const float smoothed = average.add(current);
+    // As in the original engagement routine, allow a full second for the
+    // motor to reach steady speed. Absolute overcurrent and runaway-count
+    // protection remain active during this startup period.
+    if (now - start < PROBE_SPINUP_MS) continue;
     if (smoothed >= baseline.current() + PROBE_EXTRA_CURRENT_LIMIT_A) {
       result = "PROBE_RESULT:OVERLOAD";
       break;

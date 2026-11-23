@@ -129,7 +129,9 @@ def run_engagement_check(connection, command, result_prefix):
     """Send a drill-only check and return its reported status; raise if no result arrives."""
     connection.write((command + "\n").encode())
     print("Sent:", command)
-    deadline = time.monotonic() + 5.0
+    # PROBE_SCREW can deliberately run for four seconds (one-second spin-up
+    # plus three seconds of sensing), so leave margin for serial output.
+    deadline = time.monotonic() + 10.0
     while time.monotonic() < deadline:
         reply = connection.readline().decode(errors="replace").strip()
         if reply:
