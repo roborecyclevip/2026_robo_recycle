@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run with python3 unscrew_v2.py from the project directory."""
+"""Run with python3 unscrew_v2.py for manual engagement without probing."""
 
 from unscrew_v2_helper import (
     align_tool,
@@ -8,7 +8,6 @@ from unscrew_v2_helper import (
     drop_screw_at_magnet,
     home,
     move_to,
-    run_engagement_check,
     read_screw_coordinates,
     rotate_drill,
 )
@@ -28,7 +27,16 @@ THREAD_RISE_PER_TURN_MM = 0.5 # 1 for M6, 0.5 for T8
 TOTAL_CLIMB_MM = 5 # 20 for M6, 7 for T8
 
 
-def unscrew(connection, x, y):
+def prepare_manual_engagement(connection, x, y):
+    """Lower onto the screw and return True if the operator confirms the bit is seated."""
+    # Lower with the drill stopped. The mount's compliance accommodates
+    # small differences in screw height.
+    move_to(connection, x, y, TARGET_Z)
+    answer = input("Bit engaged? Enter to unscrew, or S to skip: ").strip()
+    return not answer
+
+
+def unscrew(connection, x, y, prepare_screw=prepare_manual_engagement):
     """Align at screw position (x, y), remove the screw and drop it at the magnet. Returns None."""
     # Check the camera position at the hover height before lowering further.
     move_to(connection, x, y, SAFE_Z)
@@ -41,23 +49,10 @@ def unscrew(connection, x, y):
     print(f"Fine alignment at Z{FINE_ALIGNMENT_Z:g}. Finish when the bit is lined up.")
     x, y = align_tool(connection, x, y, FINE_ALIGNMENT_Z)
 
-    # Measure free spin above the HDD. The Arduino brakes before it replies.
-    move_to(connection, x, y, SAFE_Z)
-    baseline = run_engagement_check(connection, "PROBE_BASELINE", "PROBE_BASELINE:")
-    if baseline != "READY":
-        raise RuntimeError(f"Free-spin check stopped: {baseline}. Inspect before continuing.")
-
-    # Lower with the drill stopped, then probe with XYZ stationary. The mount's
-    # compliance accommodates small differences in screw height.
+    if not prepare_screw(connection, x, y):
+        move_to(connection, x, y, SAFE_Z)
+        return
     start_z = TARGET_Z
-    move_to(connection, x, y, start_z)
-    result = run_engagement_check(connection, "PROBE_SCREW", "PROBE_RESULT:")
-    if result != "POSSIBLE_ENGAGEMENT":
-        raise RuntimeError(f"Screw check stopped: {result}. Inspect before continuing.")
-
-    answer = input("Possible engagement. Type YES if the bit is seated and ready to unscrew: ")
-    if answer.strip().upper() != "YES":
-        raise RuntimeError("Operator did not confirm engagement. Inspect before continuing.")
 
     # Let the compliance take up each turn, then raise by the thread's rise.
     z = start_z
@@ -66,14 +61,14 @@ def unscrew(connection, x, y):
         z -= THREAD_RISE_PER_TURN_MM
         move_to(connection, x, y, z)
 
-    # Complete the climb from the probe position before retracting.
+    # Complete the climb from the engagement position before retracting.
     brake_drill(connection)
     move_to(connection, x, y, start_z - TOTAL_CLIMB_MM)
     drop_screw_at_magnet(connection, x, y, SAFE_Z)
 
 
-def main():
-    """Home, load the screw positions and run the routine for each one. Takes no inputs and returns None."""
+def main(prepare_screw=prepare_manual_engagement):
+    """Home, load screw positions and run each screw with the selected engagement step."""
     with connect_arduino() as connection:
         home(connection)
         if USE_CAMERA:
@@ -84,7 +79,7 @@ def main():
         move_to(connection, 0, 0, SAFE_Z)
 
         for x, y in coordinates:
-            unscrew(connection, x, y)
+            unscrew(connection, x, y, prepare_screw)
         print("All screws done.")
 
 
