@@ -82,7 +82,7 @@ ScrewEngagementResult abortEngagement() {
   Motor_Brake();
   Stepper_StopZMove();
   // Stay at the stopped position; an explicit stop must not trigger retraction.
-  Serial.println(F("Engagement test ABORTED; engagement result unavailable."));
+  Serial.println(F("ENGAGEMENT_RESULT:ABORTED"));
   return ScrewEngagementResult::Aborted;
 }
 } // namespace
@@ -93,6 +93,7 @@ ScrewEngagementResult unscrew_screw_engagement(float x, float y, float z,
       z < CLEARANCE_MM || speed == 0 || speed < -255 || speed > 255 ||
       finishMs == 0 || finishMs > 30000) {
     Serial.println(F("Invalid engagement coordinates/speed/duration; no movement."));
+    Serial.println(F("ENGAGEMENT_RESULT:ABORTED"));
     return ScrewEngagementResult::Aborted;
   }
 
@@ -142,7 +143,7 @@ ScrewEngagementResult unscrew_screw_engagement(float x, float y, float z,
   if (!sampleAtClearance(SPINUP_MS, "restart_spinup", stop, average))
     return abortEngagement();
 
-  // 4. Move directly to expected engagement Z at the usual gantry rate.
+  // 4. Descend only as far as the expected engagement Z; stop on detection.
   // The move returns immediately; servicing it here lets the drill and sensing
   // continue together. Never descend beyond the supplied engagement coordinate.
   EngagementDetector detector(baseline.rpm(), baseline.current());
@@ -168,15 +169,25 @@ ScrewEngagementResult unscrew_screw_engagement(float x, float y, float z,
       float smoothed = average.add(current);
       engaged = detector.update(now, rpm, smoothed);
       printSample(now - start, finishing ? "finish" : "descend", rpm, current, smoothed, engaged);
+      if (engaged) {
+        // Preserve the actual engagement height for operator confirmation.
+        Stepper_StopZMove();
+        Motor_Brake();
+        float stoppedX, stoppedY, stoppedZ;
+        Stepper_GetPosition(stoppedX, stoppedY, stoppedZ);
+        Serial.print(F("ENGAGEMENT_Z:"));
+        Serial.println(stoppedZ, 3);
+        Serial.println(F("ENGAGEMENT_RESULT:DETECTED"));
+        return ScrewEngagementResult::Engaged;
+      }
     }
-    // Detection is observational: finish the SAME bounded spin either way.
+    // Continue the bounded test only while engagement has not been detected.
     if (finishing && now - finishStart >= finishMs) break;
   }
 
-  // 5. Stop, retract vertically, then report what the sensors indicated.
+  // No engagement: stop and hold position. Python will retreat safely.
   Motor_Brake();
-  Stepper_MoveTo(x, y, approachZ);
-  Serial.println(engaged ? F("Screw engagement detected (RPM drop + current rise).")
-                         : F("Screw engagement NOT detected."));
-  return engaged ? ScrewEngagementResult::Engaged : ScrewEngagementResult::NotEngaged;
+  Stepper_StopZMove();
+  Serial.println(F("ENGAGEMENT_RESULT:NOT_DETECTED"));
+  return ScrewEngagementResult::NotEngaged;
 }

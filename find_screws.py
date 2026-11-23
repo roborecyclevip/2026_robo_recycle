@@ -7,7 +7,7 @@ from itertools import permutations
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 
 # Total number of screws to unscrew the hard drive
-TOTAL_SCREWS = 4
+TOTAL_SCREWS = 2
 
 # x-coordinate for origin of L-fixture
 X_ORIGIN = 74 #137
@@ -730,6 +730,28 @@ def tune_hough(cap, model):
     cv2.destroyWindow("Hough Tuning")
 
 
+def take_photos():
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print(cap)
+        raise Exception("Cap not opened, whatever that means")
+
+    count = 0
+    total = 80
+    while count < total:
+        ret, frame = cap.read()
+        if not ret:
+            print("End of stream or error reading frame.")
+            return
+
+        cv2.imwrite(f"18th-nov-photos/saved_image-{count}.jpg", frame)
+        print(f"18th-nov-photos/saved_image-{count}.jpg")
+        count += 1
+
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
